@@ -11,6 +11,8 @@ const CONTRACTS = {
   'kbee-init': ['existing KB', 'repo links', 'one summary', 'before pushing', 'pointer', 'only with permission', 'subagents', 'current model', 'references/accuracy-rules.md', 'references/approval-rules.md', 'kbee-tool.mjs validate', 'If Node is not available'],
   'kbee-sync': ['default branch', 'pending.md', 'merged', 'affectedKbFiles', 'show the proposed change', 'gaps.md', 'set-synced', 'without asking'],
   'kbee-kb': ['ask', 'expand', 'fix', 'add a repo', 'cite', 'approval', "I don't know"],
+  'kbee-spec': ['read the KB first', 'acceptance criteria', 'affected repos', 'status.json', 'slug'],
+  'kbee-plan': ['approved.spec', 'per repo', 'dependency order', 'contracts', 'test', 'status.json'],
 };
 
 for (const [name, phrases] of Object.entries(CONTRACTS)) {
