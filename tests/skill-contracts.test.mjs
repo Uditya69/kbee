@@ -13,6 +13,9 @@ const CONTRACTS = {
   'kbee-kb': ['ask', 'expand', 'fix', 'add a repo', 'cite', 'approval', "I don't know"],
   'kbee-spec': ['read the KB first', 'acceptance criteria', 'affected repos', 'status.json', 'slug'],
   'kbee-plan': ['approved.spec', 'per repo', 'dependency order', 'contracts', 'test', 'status.json'],
+  'kbee-build': ['read the KB first', 'approved.plan', 'failing test', 'kbee/<slug>', 'resolve', 'one repo at a time'],
+  'kbee-review': ['read the KB first', 'contracts', 'consumers', 'review.md', 'blocking'],
+  'kbee-ship': ['read the KB first', 'ask before pushing', 'cross-link', 'gh', 'PR descriptions', 'status.json'],
 };
 
 for (const [name, phrases] of Object.entries(CONTRACTS)) {
