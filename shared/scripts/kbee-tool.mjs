@@ -215,7 +215,67 @@ export function showCitation(kbDir, raw, context = 3) {
   return out.join('\n') + '\n';
 }
 
+function revParse(dir, ref) {
+  try {
+    return git(dir, ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`]);
+  } catch {
+    return null;
+  }
+}
+
+function citingFiles(kbDir, repo, changedFiles) {
+  const all = changedFiles.includes('*');
+  const changed = new Set(changedFiles);
+  return factFiles(kbDir)
+    .filter((file) => parseCitations(fs.readFileSync(file, 'utf8')).some((c) => c.kind === 'code' && c.repo === repo && (all || changed.has(c.path))))
+    .map((file) => rel(kbDir, file));
+}
+
+export function staleness(kbDir, { fetch = true } = {}) {
+  return loadManifest(kbDir).repos.map((r) => {
+    const status = { name: r.name, syncedSha: r.syncedSha, currentSha: null, status: 'unknown', fetchFailed: false, changedFiles: [], affectedKbFiles: [] };
+    let dir;
+    try {
+      dir = resolveRepo(kbDir, r.name);
+    } catch (e) {
+      if (e instanceof KbeeError && e.code === 'REPO_NOT_FOUND') return { ...status, status: 'missing' };
+      throw e;
+    }
+    if (fetch) {
+      try {
+        git(dir, ['fetch', '--quiet', 'origin', r.defaultBranch]);
+      } catch {
+        status.fetchFailed = true;
+      }
+    }
+    status.currentSha = revParse(dir, `origin/${r.defaultBranch}`) ?? revParse(dir, r.defaultBranch);
+    if (!status.currentSha) return status;
+    const synced = r.syncedSha && revParse(dir, r.syncedSha);
+    if (!synced) status.changedFiles = ['*'];
+    else if (synced !== status.currentSha) {
+      status.changedFiles = git(dir, ['diff', '--name-only', synced, status.currentSha]).split('\n').filter(Boolean);
+    }
+    status.status = synced === status.currentSha ? 'fresh' : 'stale';
+    status.affectedKbFiles = status.status === 'stale' ? citingFiles(kbDir, r.name, status.changedFiles) : [];
+    return status;
+  });
+}
+
+export function setSynced(kbDir, name, sha) {
+  const manifest = loadManifest(kbDir);
+  const repo = manifest.repos.find((r) => r.name === name);
+  if (!repo) throw new KbeeError('REPO_UNKNOWN', `repo "${name}" is not in manifest.json`);
+  const full = revParse(resolveRepo(kbDir, name), sha);
+  if (!full) throw new KbeeError('SHA_NOT_FOUND', `commit ${sha} not found in ${name}`);
+  repo.syncedSha = full;
+  repo.syncedAt = new Date().toISOString();
+  fs.writeFileSync(path.join(kbDir, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
+  return manifest;
+}
+
 const COMMANDS = {
+  stale: ([kbDir, ...flags]) => staleness(kbDir, { fetch: !flags.includes('--no-fetch') }),
+  'set-synced': ([kbDir, name, sha]) => setSynced(kbDir, name, sha),
   find: ([dir = process.cwd()]) => ({ kbDir: findKb(dir) }),
   resolve: ([kbDir, name]) => ({ path: resolveRepo(kbDir, name) }),
   validate: ([kbDir]) => {
