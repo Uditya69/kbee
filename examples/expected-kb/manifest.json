@@ -1,0 +1,9 @@
+{
+  "kbeeVersion": 1,
+  "mode": "direct",
+  "repos": [
+    { "name": "shop-api", "url": "https://github.com/example/shop-api.git", "defaultBranch": "main", "pathHint": "../shop-api", "syncedSha": null, "syncedAt": null },
+    { "name": "shop-web", "url": "https://github.com/example/shop-web.git", "defaultBranch": "main", "pathHint": "../shop-web", "syncedSha": null, "syncedAt": null },
+    { "name": "shop-types", "url": "https://github.com/example/shop-types.git", "defaultBranch": "main", "pathHint": "../shop-types", "syncedSha": null, "syncedAt": null }
+  ]
+}

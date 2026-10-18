@@ -5,14 +5,25 @@ import path from 'node:path';
 import { staleness, setSynced, loadManifest, KbeeError } from '../shared/scripts/kbee-tool.mjs';
 import { makeWorkspace, gitT, writeJson } from './helpers/fixture-repos.mjs';
 
-// The reference KB arrives in Task 5; each test writes its own cited file.
-function citeOrders(kbDir, sha) {
-  const file = path.join(kbDir, 'repos/shop-api/overview.md');
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, `Orders live in [shop-api@${sha.slice(0, 7)}:src/orders.ts:1].\n`);
-  const other = path.join(kbDir, 'repos/shop-web/overview.md');
-  fs.mkdirSync(path.dirname(other), { recursive: true });
-  fs.writeFileSync(other, 'No citations of shop-api here.\n');
+// KB fact files (relative, sorted) whose text cites `repo@...:<path>`, or any path of repo when path is omitted.
+function citing(kbDir, repo, file) {
+  const out = [];
+  const walk = (p) => {
+    for (const e of fs.readdirSync(p, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      const full = path.join(p, e.name);
+      if (e.isDirectory()) walk(full);
+      else if (e.name.endsWith('.md') && new RegExp(`\\[${repo}@[0-9a-f]+:${file ?? '[^:\\]]+'}:`).test(fs.readFileSync(full, 'utf8'))) {
+        out.push(path.relative(kbDir, full).split(path.sep).join('/'));
+      }
+    }
+  };
+  for (const f of ['system-map.md', 'repos', 'contracts', 'decisions']) {
+    const full = path.join(kbDir, f);
+    if (!fs.existsSync(full)) continue;
+    if (fs.statSync(full).isDirectory()) walk(full);
+    else if (new RegExp(`\\[${repo}@[0-9a-f]+:${file ?? '[^:\\]]+'}:`).test(fs.readFileSync(full, 'utf8'))) out.push(f);
+  }
+  return out.sort();
 }
 
 function pushUpstream(ws, name, edit) {
@@ -28,7 +39,6 @@ const byName = (list) => Object.fromEntries(list.map((r) => [r.name, r]));
 
 test('a fresh workspace is fresh everywhere', async () => {
   const ws = await makeWorkspace();
-  citeOrders(ws.kbDir, ws.repos['shop-api'].sha);
   for (const r of staleness(ws.kbDir)) {
     assert.equal(r.status, 'fresh', r.name);
     assert.deepEqual(r.changedFiles, []);
@@ -38,29 +48,28 @@ test('a fresh workspace is fresh everywhere', async () => {
 
 test('an upstream edit marks the repo stale and lists the citing KB files', async () => {
   const ws = await makeWorkspace();
-  citeOrders(ws.kbDir, ws.repos['shop-api'].sha);
   pushUpstream(ws, 'shop-api', (d) => fs.appendFileSync(path.join(d, 'src/orders.ts'), 'export const d = 4;\n'));
   const r = byName(staleness(ws.kbDir))['shop-api'];
   assert.equal(r.status, 'stale');
   assert.ok(r.changedFiles.includes('src/orders.ts'));
-  assert.deepEqual(r.affectedKbFiles, ['repos/shop-api/overview.md']);
+  assert.deepEqual([...r.affectedKbFiles].sort(), citing(ws.kbDir, 'shop-api', 'src/orders.ts'));
+  assert.ok(r.affectedKbFiles.includes('contracts/orders-api.md'));
+  assert.ok(!r.affectedKbFiles.includes('repos/shop-types/overview.md'));
   assert.notEqual(r.currentSha, r.syncedSha);
 });
 
 test('without fetching, an unseen upstream edit still reads as fresh', async () => {
   const ws = await makeWorkspace();
-  citeOrders(ws.kbDir, ws.repos['shop-api'].sha);
   pushUpstream(ws, 'shop-api', (d) => fs.appendFileSync(path.join(d, 'src/orders.ts'), 'x\n'));
   assert.equal(byName(staleness(ws.kbDir, { fetch: false }))['shop-api'].status, 'fresh');
 });
 
 test('deleting a cited file upstream flags the citing KB file', async () => {
   const ws = await makeWorkspace();
-  citeOrders(ws.kbDir, ws.repos['shop-api'].sha);
   pushUpstream(ws, 'shop-api', (d) => fs.rmSync(path.join(d, 'src/orders.ts')));
   const r = byName(staleness(ws.kbDir))['shop-api'];
   assert.ok(r.changedFiles.includes('src/orders.ts'));
-  assert.deepEqual(r.affectedKbFiles, ['repos/shop-api/overview.md']);
+  assert.deepEqual([...r.affectedKbFiles].sort(), citing(ws.kbDir, 'shop-api', 'src/orders.ts'));
 });
 
 test('a missing repo dir reports missing instead of throwing', async () => {
@@ -82,14 +91,14 @@ test('no origin remote falls back to the local branch and flags fetchFailed', as
 
 test('a synced SHA missing locally means stale with every citing file affected', async () => {
   const ws = await makeWorkspace();
-  citeOrders(ws.kbDir, ws.repos['shop-api'].sha);
   const m = loadManifest(ws.kbDir);
   m.repos.find((r) => r.name === 'shop-api').syncedSha = 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef';
   writeJson(path.join(ws.kbDir, 'manifest.json'), m);
   const r = byName(staleness(ws.kbDir))['shop-api'];
   assert.equal(r.status, 'stale');
   assert.deepEqual(r.changedFiles, ['*']);
-  assert.deepEqual(r.affectedKbFiles, ['repos/shop-api/overview.md']);
+  assert.deepEqual([...r.affectedKbFiles].sort(), citing(ws.kbDir, 'shop-api'));
+  assert.ok(r.affectedKbFiles.includes('repos/shop-api/conventions.md'));
 });
 
 test('setSynced updates the manifest and rejects unknown SHAs', async () => {

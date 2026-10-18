@@ -76,7 +76,8 @@ test('validateKb reports exactly the bad citation with file and line, and ignore
 test('showCitation prints numbered context with the cited line marked', async () => {
   const { kbDir, repos } = await makeWorkspace();
   const sha = repos['shop-api'].sha.slice(0, 7);
+  const lines = fs.readFileSync(path.join(repos['shop-api'].dir, 'src/orders.ts'), 'utf8').split('\n');
   const out = showCitation(kbDir, `[shop-api@${sha}:src/orders.ts:2]`, 1);
-  assert.match(out, /> 2 \| export const b = 2;/);
-  assert.match(out, /  1 \| export const a = 1;/);
+  assert.ok(out.includes(`> 2 | ${lines[1]}`), out);
+  assert.ok(out.includes(`  1 | ${lines[0]}`), out);
 });

@@ -52,7 +52,7 @@ test('resolveRepo throws REPO_UNKNOWN and REPO_NOT_FOUND listing paths tried', a
 
 test('findKb finds the KB from itself and from a subfolder', async () => {
   const { kbDir } = await makeWorkspace();
-  fs.mkdirSync(path.join(kbDir, 'repos'));
+  fs.mkdirSync(path.join(kbDir, 'repos'), { recursive: true });
   assert.equal(findKb(kbDir), kbDir);
   assert.equal(findKb(path.join(kbDir, 'repos')), kbDir);
 });

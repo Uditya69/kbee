@@ -7,7 +7,12 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 export const REPO_NAMES = ['shop-api', 'shop-web', 'shop-types'];
-const FIXTURES = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../examples/fixtures');
+const EXAMPLES = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../examples');
+const FIXTURES = path.join(EXAMPLES, 'fixtures');
+const EXPECTED_KB = path.join(EXAMPLES, 'expected-kb');
+
+// `@SHA_SHOP_API` -> `@<real sha of shop-api>`
+export const shaToken = (name) => `SHA_${name.toUpperCase().replace(/[^A-Z0-9]/g, '_')}`;
 
 export function gitT(cwd, args) {
   return execFileSync('git', ['-c', 'user.name=kbee-test', '-c', 'user.email=test@example.com', ...args], {
@@ -31,12 +36,7 @@ export async function makeWorkspace() {
   const repos = {};
   for (const name of REPO_NAMES) {
     const dir = path.join(root, name);
-    const src = path.join(FIXTURES, name);
-    if (fs.existsSync(src)) fs.cpSync(src, dir, { recursive: true });
-    else {
-      fs.mkdirSync(path.join(dir, 'src'), { recursive: true });
-      fs.writeFileSync(path.join(dir, 'src', 'orders.ts'), 'export const a = 1;\nexport const b = 2;\nexport const c = 3;\n');
-    }
+    fs.cpSync(path.join(FIXTURES, name), dir, { recursive: true });
     gitT(dir, ['init', '-q', '-b', 'main']);
     gitT(dir, ['add', '-A']);
     gitT(dir, ['commit', '-q', '-m', 'initial']);
@@ -48,6 +48,19 @@ export async function makeWorkspace() {
     repos[name] = { dir, origin, sha: gitT(dir, ['rev-parse', 'HEAD']) };
   }
   const kbDir = path.join(root, 'shop-kb');
+  fs.cpSync(EXPECTED_KB, kbDir, { recursive: true });
+  const rewrite = (p) => {
+    for (const e of fs.readdirSync(p, { withFileTypes: true })) {
+      const full = path.join(p, e.name);
+      if (e.isDirectory()) rewrite(full);
+      else if (e.name.endsWith('.md')) {
+        let text = fs.readFileSync(full, 'utf8');
+        for (const name of REPO_NAMES) text = text.replaceAll(`@${shaToken(name)}:`, `@${repos[name].sha.slice(0, 7)}:`);
+        fs.writeFileSync(full, text);
+      }
+    }
+  };
+  rewrite(kbDir);
   writeJson(path.join(kbDir, 'manifest.json'), {
     kbeeVersion: 1,
     mode: 'direct',
