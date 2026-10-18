@@ -18,10 +18,12 @@ Runs the six kbee stages in order. Each stage has its own skill. If a stage skil
 
 Progress lives in `features/<slug>/status.json` ([references/kb-layout.md](references/kb-layout.md)). Approvals follow [references/approval-rules.md](references/approval-rules.md).
 
+
+`<skill-dir>` below is the folder containing this SKILL.md. If Node is not available, use the manual fallbacks in `references/accuracy-rules.md`.
 ## 0. Find the KB and check it
 
 - Find the KB ([references/kb-discovery.md](references/kb-discovery.md)). If there's **no KB**, say so, offer **kbee-init**, and stop.
-- Run the gap check: `node scripts/kbee-tool.mjs stale <kb>` (without Node, use the manual fallback in [references/accuracy-rules.md](references/accuracy-rules.md)). Report stale or missing repos in one or two lines, and offer **kbee-sync** before starting.
+- Run the gap check: `node <skill-dir>/scripts/kbee-tool.mjs stale <kb>` (without Node, use the manual fallback in [references/accuracy-rules.md](references/accuracy-rules.md)). Report stale or missing repos in one or two lines, and offer **kbee-sync** before starting.
 
 ## 1. New feature, or resume?
 

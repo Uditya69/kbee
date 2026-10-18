@@ -114,3 +114,24 @@ test('setSynced updates the manifest and rejects unknown SHAs', async () => {
   assert.ok(fs.readFileSync(path.join(ws.kbDir, 'manifest.json'), 'utf8').endsWith('}\n'));
   assert.throws(() => setSynced(ws.kbDir, 'shop-api', 'deadbee'), (e) => e instanceof KbeeError && e.code === 'SHA_NOT_FOUND');
 });
+
+test('renaming a cited file upstream flags the KB files citing the old path', async () => {
+  const ws = await makeWorkspace();
+  pushUpstream(ws, 'shop-api', (d) => gitT(d, ['mv', 'src/orders.ts', 'src/order-routes.ts']));
+  const r = byName(staleness(ws.kbDir))['shop-api'];
+  assert.ok(r.changedFiles.includes('src/orders.ts'), JSON.stringify(r.changedFiles));
+  assert.ok(r.changedFiles.includes('src/order-routes.ts'));
+  assert.deepEqual([...r.affectedKbFiles].sort(), citing(ws.kbDir, 'shop-api', 'src/orders.ts'));
+});
+
+test('setSynced refuses to move syncedSha backwards', async () => {
+  const ws = await makeWorkspace();
+  const dir = ws.repos['shop-api'].dir;
+  const old = ws.repos['shop-api'].sha;
+  fs.appendFileSync(path.join(dir, 'src/orders.ts'), 'x\n');
+  gitT(dir, ['commit', '-q', '-am', 'next']);
+  const next = gitT(dir, ['rev-parse', 'HEAD']);
+  setSynced(ws.kbDir, 'shop-api', next);
+  assert.throws(() => setSynced(ws.kbDir, 'shop-api', old), (e) => e.code === 'SHA_NOT_DESCENDANT');
+  assert.equal(loadManifest(ws.kbDir).repos.find((r) => r.name === 'shop-api').syncedSha, next);
+});

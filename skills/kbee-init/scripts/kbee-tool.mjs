@@ -15,12 +15,17 @@ export class KbeeError extends Error {
 
 const NAME_RE = /^[a-z0-9][a-z0-9._-]*$/;
 
-function gitRaw(cwd, args) {
-  return execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024 });
+// Never let git block on a credential prompt or a GUI sign-in.
+export function gitEnv() {
+  return { ...process.env, GIT_TERMINAL_PROMPT: '0', GCM_INTERACTIVE: 'never' };
 }
 
-export function git(cwd, args) {
-  return gitRaw(cwd, args).trim();
+function gitRaw(cwd, args, { timeout } = {}) {
+  return execFileSync('git', args, { cwd, env: gitEnv(), timeout, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024 });
+}
+
+export function git(cwd, args, opts) {
+  return gitRaw(cwd, args, opts).trim();
 }
 
 export function validateManifest(obj) {
@@ -116,16 +121,53 @@ export function findKb(startDir) {
       if (isKb(p)) return p;
     }
   }
-  const parent = path.dirname(rootDir);
-  for (const entry of fs.readdirSync(parent, { withFileTypes: true })) {
-    const p = path.join(parent, entry.name);
-    if (entry.isDirectory() && p !== rootDir && isKb(p)) return p;
-  }
-  return null;
+  const candidates = siblingKbs(rootDir);
+  const listing = candidates.filter((kb) => listsRepo(kb, rootDir));
+  if (listing.length === 1) return listing[0];
+  if (listing.length === 0 && candidates.length === 1) return candidates[0];
+  return null; // none, or ambiguous: the caller asks the user (see findKbCandidates)
 }
 
-// [repo@sha:path:line] or [repo@sha:path:start-end]; [source: ...]
-const CITATION_RE = /\[([a-z0-9][a-z0-9._-]*)@([0-9a-f]{7,40}):([^\]:\s]+):(\d+)(?:-(\d+))?\]|\[source:\s*([^\]]+)\]/g;
+function siblingKbs(rootDir) {
+  const parent = path.dirname(rootDir);
+  let entries;
+  try {
+    entries = fs.readdirSync(parent, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  return entries
+    .filter((e) => e.isDirectory())
+    .map((e) => path.join(parent, e.name))
+    .filter((p) => p !== rootDir && isKb(p))
+    .sort();
+}
+
+function listsRepo(kbDir, rootDir) {
+  try {
+    const manifest = JSON.parse(fs.readFileSync(path.join(kbDir, 'manifest.json'), 'utf8'));
+    let local = {};
+    try {
+      local = loadLocal(kbDir);
+    } catch {}
+    return manifest.repos.some((r) => {
+      const p = path.resolve(kbDir, local.repos?.[r.name] ?? r.pathHint);
+      return p === rootDir || p.startsWith(rootDir + path.sep);
+    });
+  } catch {
+    return false;
+  }
+}
+
+// Sibling KBs of the current git repo, for asking the user when findKb can't decide.
+export function findKbCandidates(startDir) {
+  const root = gitRoot(path.resolve(startDir));
+  return root ? siblingKbs(path.resolve(root)) : [];
+}
+
+// [repo@sha:path:line] or [repo@sha:path:start-end]; [source: ...];
+// anything else shaped like [x@y] is a malformed citation, reported rather than skipped.
+const CITATION_RE = /\[([a-z0-9][a-z0-9._-]*)@([0-9a-f]{7,40}):([^\]:\s]+):(\d+)(?:-(\d+))?\]|\[source:\s*([^\]]+)\]|(\[[^\]\s]+@[^\]\s]+\])/g;
 const GOOD_SOURCE_RE = /^(user, \d{4}-\d{2}-\d{2}|https?:\/\/\S+)$/;
 const FACT_PATHS = ['system-map.md', 'repos', 'contracts', 'decisions'];
 
@@ -133,7 +175,8 @@ export function parseCitations(text) {
   const out = [];
   text.split(/\r?\n/).forEach((lineText, i) => {
     for (const m of lineText.matchAll(CITATION_RE)) {
-      if (m[6] !== undefined) out.push({ kind: 'source', value: m[6].trim(), raw: m[0], lineNo: i + 1 });
+      if (m[7] !== undefined) out.push({ kind: 'malformed', raw: m[0], lineNo: i + 1 });
+      else if (m[6] !== undefined) out.push({ kind: 'source', value: m[6].trim(), raw: m[0], lineNo: i + 1 });
       else {
         const line = Number(m[4]);
         out.push({ kind: 'code', repo: m[1], sha: m[2], path: m[3], line, endLine: m[5] ? Number(m[5]) : line, raw: m[0], lineNo: i + 1 });
@@ -164,6 +207,7 @@ function readAt(kbDir, c) {
 }
 
 export function checkCitation(kbDir, c) {
+  if (c.kind === 'malformed') return { ok: false, problem: 'BAD_CITATION' };
   if (c.kind === 'source') return GOOD_SOURCE_RE.test(c.value) ? { ok: true } : { ok: false, problem: 'BAD_SOURCE' };
   try {
     const lines = readAt(kbDir, c);
@@ -243,7 +287,7 @@ export function staleness(kbDir, { fetch = true } = {}) {
     }
     if (fetch) {
       try {
-        git(dir, ['fetch', '--quiet', 'origin', r.defaultBranch]);
+        git(dir, ['-c', 'credential.interactive=never', 'fetch', '--quiet', 'origin', r.defaultBranch], { timeout: 30000 });
       } catch {
         status.fetchFailed = true;
       }
@@ -253,7 +297,7 @@ export function staleness(kbDir, { fetch = true } = {}) {
     const synced = r.syncedSha && revParse(dir, r.syncedSha);
     if (!synced) status.changedFiles = ['*'];
     else if (synced !== status.currentSha) {
-      status.changedFiles = git(dir, ['diff', '--name-only', synced, status.currentSha]).split('\n').filter(Boolean);
+      status.changedFiles = git(dir, ['diff', '--name-only', '--no-renames', synced, status.currentSha]).split('\n').filter(Boolean);
     }
     status.status = synced === status.currentSha ? 'fresh' : 'stale';
     status.affectedKbFiles = status.status === 'stale' ? citingFiles(kbDir, r.name, status.changedFiles) : [];
@@ -265,8 +309,17 @@ export function setSynced(kbDir, name, sha) {
   const manifest = loadManifest(kbDir);
   const repo = manifest.repos.find((r) => r.name === name);
   if (!repo) throw new KbeeError('REPO_UNKNOWN', `repo "${name}" is not in manifest.json`);
-  const full = revParse(resolveRepo(kbDir, name), sha);
+  const dir = resolveRepo(kbDir, name);
+  const full = revParse(dir, sha);
   if (!full) throw new KbeeError('SHA_NOT_FOUND', `commit ${sha} not found in ${name}`);
+  const previous = repo.syncedSha && revParse(dir, repo.syncedSha);
+  if (previous) {
+    try {
+      git(dir, ['merge-base', '--is-ancestor', previous, full]);
+    } catch {
+      throw new KbeeError('SHA_NOT_DESCENDANT', `${name}: ${full} does not descend from the current syncedSha ${previous}; refusing to move the KB backwards (fetch first?)`);
+    }
+  }
   repo.syncedSha = full;
   repo.syncedAt = new Date().toISOString();
   fs.writeFileSync(path.join(kbDir, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
@@ -276,7 +329,7 @@ export function setSynced(kbDir, name, sha) {
 const COMMANDS = {
   stale: ([kbDir, ...flags]) => staleness(kbDir, { fetch: !flags.includes('--no-fetch') }),
   'set-synced': ([kbDir, name, sha]) => setSynced(kbDir, name, sha),
-  find: ([dir = process.cwd()]) => ({ kbDir: findKb(dir) }),
+  find: ([dir = process.cwd()]) => ({ kbDir: findKb(dir), candidates: findKbCandidates(dir) }),
   resolve: ([kbDir, name]) => ({ path: resolveRepo(kbDir, name) }),
   validate: ([kbDir]) => {
     const result = validateKb(kbDir);

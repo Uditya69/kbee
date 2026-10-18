@@ -34,8 +34,16 @@ test('a malformed source parses but fails the check with BAD_SOURCE', async () =
   assert.deepEqual(checkCitation(kbDir, c), { ok: false, problem: 'BAD_SOURCE' });
 });
 
-test('uppercase and 6-char SHAs are not citations', () => {
-  assert.equal(parseCitations('[shop-api@A1B2C3D:src/a.ts:1] [shop-api@a1b2c3:src/a.ts:1]').length, 0);
+test('citation-like text that breaks the format is reported as BAD_CITATION', async () => {
+  const { kbDir, repos } = await makeWorkspace();
+  const sha = repos['shop-api'].sha.slice(0, 7);
+  const bad = [`[shop-api@${sha}:src/orders.ts]`, '[shop-api@A1B2C3D:src/orders.ts:1]', `[shop-api@${sha}:src/orders.ts:L2]`, `[shop-api@${sha}:src/orders.ts#L3]`, '[shop-api@a1b2c3:src/orders.ts:1]'];
+  for (const raw of bad) {
+    const [c] = parseCitations(`x ${raw} y`);
+    assert.equal(c?.kind, 'malformed', raw);
+    assert.deepEqual(checkCitation(kbDir, c), { ok: false, problem: 'BAD_CITATION' });
+  }
+  assert.equal(parseCitations('email me@example.com or see [docs](http://x.io/a@b)').length, 0);
 });
 
 test('checkCitation accepts a real line and rejects bad file, line and sha', async () => {

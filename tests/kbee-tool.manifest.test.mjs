@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { loadManifest, validateManifest, resolveRepo, findKb } from '../shared/scripts/kbee-tool.mjs';
+import { loadManifest, validateManifest, resolveRepo, findKb, findKbCandidates, gitEnv } from '../shared/scripts/kbee-tool.mjs';
 import { makeWorkspace, tempDir, writeJson } from './helpers/fixture-repos.mjs';
 
 const TOOL = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../shared/scripts/kbee-tool.mjs');
@@ -83,4 +83,19 @@ test('CLI resolve prints a JSON error and exits 1 for an unknown repo', async ()
     out = JSON.parse(e.stdout);
   }
   assert.equal(out.error.code, 'REPO_UNKNOWN');
+});
+
+test('findKb prefers the sibling KB whose manifest lists this repo, and refuses to guess between others', async () => {
+  const { root, kbDir, repos } = await makeWorkspace();
+  for (const name of ['aaa-kb', 'zzz-kb']) writeJson(path.join(root, name, 'manifest.json'), { kbeeVersion: 1, mode: 'direct', repos: [] });
+  assert.equal(findKb(repos['shop-api'].dir), kbDir);
+  const stray = path.join(root, 'stray');
+  fs.mkdirSync(stray);
+  execFileSync('git', ['init', '-q'], { cwd: stray });
+  assert.equal(findKb(stray), null);
+  assert.deepEqual(findKbCandidates(stray), [path.join(root, 'aaa-kb'), kbDir, path.join(root, 'zzz-kb')].sort());
+});
+
+test('git never prompts for credentials', () => {
+  assert.equal(gitEnv().GIT_TERMINAL_PROMPT, '0');
 });

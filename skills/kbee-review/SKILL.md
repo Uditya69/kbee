@@ -45,4 +45,4 @@ This is the check single-repo reviews can't do.
 - With any **blocking** findings, go back to **kbee-build** with the list. kbee-feature limits this loop to 3 rounds, then asks the user.
 - With none, set `status.json.stage` to `review` and hand off to **kbee-ship**.
 
-Run **kbee-sync** feature mode.
+Run **kbee-sync** feature mode, then commit the KB (`kb: review <slug>`) so `review.md` and `status.json` are shared.

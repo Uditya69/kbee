@@ -7,11 +7,13 @@ description: Turn a feature idea or ticket into a clear spec that knows which re
 
 Stage 1 of 6. The output is `features/<slug>/spec.md` in the KB repo. Read [references/accuracy-rules.md](references/accuracy-rules.md), [references/approval-rules.md](references/approval-rules.md), and [references/kb-layout.md](references/kb-layout.md).
 
+
+`<skill-dir>` below is the folder containing this SKILL.md. If Node is not available, use the manual fallbacks in `references/accuracy-rules.md`.
 ## 1. Read the KB first
 
 Find the KB ([references/kb-discovery.md](references/kb-discovery.md)). If there is none, offer **kbee-init** and stop.
 
-Run the gap check from **kbee-sync**: `node scripts/kbee-tool.mjs stale <kb>`. If a repo this feature likely touches is stale, say so. You can still continue, but verify those facts against the current code as you go.
+Run the gap check from **kbee-sync**: `node <skill-dir>/scripts/kbee-tool.mjs stale <kb>`. If a repo this feature likely touches is stale, say so. You can still continue, but verify those facts against the current code as you go.
 
 Then read `system-map.md`, the relevant `repos/*/overview.md`, and every contract the idea might touch.
 

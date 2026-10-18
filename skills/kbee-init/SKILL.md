@@ -9,7 +9,7 @@ Builds the shared knowledge base (KB) that every other kbee skill reads. The KB 
 
 The rules in [references/accuracy-rules.md](references/accuracy-rules.md) and [references/approval-rules.md](references/approval-rules.md) apply to every step. Read them first.
 
-The helper is `scripts/kbee-tool.mjs`, next to this file. If Node is not available, use the manual fallbacks in `references/accuracy-rules.md`.
+The helper is `<skill-dir>/scripts/kbee-tool.mjs`, where `<skill-dir>` is the folder containing this SKILL.md. If Node is not available, use the manual fallbacks in `references/accuracy-rules.md`.
 
 ## 1. New KB or existing KB?
 
@@ -60,7 +60,7 @@ Stay summary-level: what someone needs to work across repos, not every internal 
 Run the verify pass from `references/accuracy-rules.md` on every fact file, then run:
 
 ```
-node scripts/kbee-tool.mjs validate <kb>
+node <skill-dir>/scripts/kbee-tool.mjs validate <kb>
 ```
 
 Fix or remove every reported citation, and rerun until it reports no errors. Drop any claim you can't confirm, or move it to `gaps.md` as a question.
@@ -85,9 +85,9 @@ For each code repo, offer to add the **pointer** block from [templates/pointer-s
 
 ## Joining an existing KB
 
-1. Clone or locate the KB. Check that its `manifest.json` is valid (`node scripts/kbee-tool.mjs validate <kb>` also checks this).
-2. For each repo in the manifest, find it locally (`node scripts/kbee-tool.mjs resolve <kb> <repo>`), or offer to clone it from its `url` next to the KB. If a repo lives somewhere other than its `pathHint`, write `.kbee.local.json` in the KB with the real path. That file is git-ignored.
-3. Don't rebuild the KB. Run `node scripts/kbee-tool.mjs stale <kb>` and report what's fresh, stale, or missing. Offer the **kbee-sync** skill for anything stale.
+1. Clone or locate the KB. Check that its `manifest.json` is valid (`node <skill-dir>/scripts/kbee-tool.mjs validate <kb>` also checks this).
+2. For each repo in the manifest, find it locally (`node <skill-dir>/scripts/kbee-tool.mjs resolve <kb> <repo>`), or offer to clone it from its `url` next to the KB. If a repo lives somewhere other than its `pathHint`, write `.kbee.local.json` in the KB with the real path. That file is git-ignored.
+3. Don't rebuild the KB. Run `node <skill-dir>/scripts/kbee-tool.mjs stale <kb>` and report what's fresh, stale, or missing. Offer the **kbee-sync** skill for anything stale.
 4. Offer the pointer, as in step 8.
 
 ## Finish
