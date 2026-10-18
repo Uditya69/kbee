@@ -7,7 +7,9 @@ import { fileURLToPath } from 'node:url';
 const SKILLS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../skills');
 
 // Behaviors each skill must state. Add a row (or phrases) for every new behavior.
-const CONTRACTS = {};
+const CONTRACTS = {
+  'kbee-init': ['existing KB', 'repo links', 'one summary', 'before pushing', 'pointer', 'only with permission', 'subagents', 'current model', 'references/accuracy-rules.md', 'references/approval-rules.md', 'kbee-tool.mjs validate', 'If Node is not available'],
+};
 
 for (const [name, phrases] of Object.entries(CONTRACTS)) {
   test(`skill ${name} states its required behaviors`, () => {

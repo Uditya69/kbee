@@ -1,6 +1,6 @@
 # {{KB_NAME}}
 
-This is the shared knowledge base (KB) for these repos, maintained with kbee, an open-source AI SDLC toolkit. People and coding agents both read it.
+This is the shared knowledge base (KB) for these repos, maintained with [kbee](https://github.com/oct8-studio/kbee). People and coding agents both read it.
 
 | File | What it holds |
 |------|---------------|
