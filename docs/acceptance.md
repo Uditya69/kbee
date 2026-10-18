@@ -34,4 +34,4 @@ Open the agent in `$WS`.
 
 | Date | Agent and version | Steps passed | Notes |
 |------|-------------------|--------------|-------|
-| | | | |
+| 2026-10-18 | Claude Code 2.1.302 (Sonnet, headless `-p`, approvals given up front) | 1, 3, 4 | Init: `validate` clean, one commit, no push, code repos untouched. Contracts and citations spot-checked correct, and it found an extra real gap (no status transitions). The `url` fields are null because the fixtures have no remotes. Steps 2, 5–8 not run yet. |
