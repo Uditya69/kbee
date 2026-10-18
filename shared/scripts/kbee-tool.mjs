@@ -15,8 +15,12 @@ export class KbeeError extends Error {
 
 const NAME_RE = /^[a-z0-9][a-z0-9._-]*$/;
 
+function gitRaw(cwd, args) {
+  return execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024 });
+}
+
 export function git(cwd, args) {
-  return execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 64 * 1024 * 1024 }).trim();
+  return gitRaw(cwd, args).trim();
 }
 
 export function validateManifest(obj) {
@@ -120,9 +124,106 @@ export function findKb(startDir) {
   return null;
 }
 
+// [repo@sha:path:line] or [repo@sha:path:start-end]; [source: ...]
+const CITATION_RE = /\[([a-z0-9][a-z0-9._-]*)@([0-9a-f]{7,40}):([^\]:\s]+):(\d+)(?:-(\d+))?\]|\[source:\s*([^\]]+)\]/g;
+const GOOD_SOURCE_RE = /^(user, \d{4}-\d{2}-\d{2}|https?:\/\/\S+)$/;
+const FACT_PATHS = ['system-map.md', 'repos', 'contracts', 'decisions'];
+
+export function parseCitations(text) {
+  const out = [];
+  text.split(/\r?\n/).forEach((lineText, i) => {
+    for (const m of lineText.matchAll(CITATION_RE)) {
+      if (m[6] !== undefined) out.push({ kind: 'source', value: m[6].trim(), raw: m[0], lineNo: i + 1 });
+      else {
+        const line = Number(m[4]);
+        out.push({ kind: 'code', repo: m[1], sha: m[2], path: m[3], line, endLine: m[5] ? Number(m[5]) : line, raw: m[0], lineNo: i + 1 });
+      }
+    }
+  });
+  return out;
+}
+
+function fileLines(text) {
+  const lines = text.split(/\r?\n/);
+  if (lines.length && lines[lines.length - 1] === '') lines.pop();
+  return lines;
+}
+
+function readAt(kbDir, c) {
+  const dir = resolveRepo(kbDir, c.repo);
+  try {
+    git(dir, ['cat-file', '-e', `${c.sha}^{commit}`]);
+  } catch {
+    throw new KbeeError('SHA_NOT_FOUND', `commit ${c.sha} not found in ${c.repo}`);
+  }
+  try {
+    return fileLines(gitRaw(dir, ['show', `${c.sha}:${c.path}`]));
+  } catch {
+    throw new KbeeError('FILE_NOT_FOUND', `${c.path} not found in ${c.repo}@${c.sha}`);
+  }
+}
+
+export function checkCitation(kbDir, c) {
+  if (c.kind === 'source') return GOOD_SOURCE_RE.test(c.value) ? { ok: true } : { ok: false, problem: 'BAD_SOURCE' };
+  try {
+    const lines = readAt(kbDir, c);
+    if (c.line < 1 || c.endLine < c.line || c.endLine > lines.length) return { ok: false, problem: 'LINE_OUT_OF_RANGE' };
+    return { ok: true };
+  } catch (e) {
+    if (e instanceof KbeeError) return { ok: false, problem: e.code };
+    throw e;
+  }
+}
+
+function factFiles(kbDir) {
+  const out = [];
+  const walk = (p) => {
+    if (!fs.existsSync(p)) return;
+    if (fs.statSync(p).isDirectory()) fs.readdirSync(p).sort().forEach((n) => walk(path.join(p, n)));
+    else if (p.endsWith('.md')) out.push(p);
+  };
+  FACT_PATHS.forEach((f) => walk(path.join(kbDir, f)));
+  return out;
+}
+
+const rel = (kbDir, file) => path.relative(kbDir, file).split(path.sep).join('/');
+
+export function validateKb(kbDir) {
+  loadManifest(kbDir);
+  const errors = [];
+  for (const file of factFiles(kbDir)) {
+    for (const c of parseCitations(fs.readFileSync(file, 'utf8'))) {
+      const r = checkCitation(kbDir, c);
+      if (!r.ok) errors.push({ file: rel(kbDir, file), lineNo: c.lineNo, raw: c.raw, problem: r.problem });
+    }
+  }
+  return { errors };
+}
+
+export function showCitation(kbDir, raw, context = 3) {
+  const [c] = parseCitations(raw);
+  if (!c || c.kind !== 'code') throw new KbeeError('BAD_CITATION', `not a code citation: ${raw}`);
+  const lines = readAt(kbDir, c);
+  const from = Math.max(1, c.line - context);
+  const to = Math.min(lines.length, c.endLine + context);
+  const width = String(to).length;
+  const out = [];
+  for (let n = from; n <= to; n++) {
+    const mark = n >= c.line && n <= c.endLine ? '>' : ' ';
+    out.push(`${mark} ${String(n).padStart(width)} | ${lines[n - 1]}`);
+  }
+  return out.join('\n') + '\n';
+}
+
 const COMMANDS = {
   find: ([dir = process.cwd()]) => ({ kbDir: findKb(dir) }),
   resolve: ([kbDir, name]) => ({ path: resolveRepo(kbDir, name) }),
+  validate: ([kbDir]) => {
+    const result = validateKb(kbDir);
+    if (result.errors.length) process.exitCode = 1;
+    return result;
+  },
+  show: ([kbDir, raw, context]) => showCitation(kbDir, raw, context === undefined ? 3 : Number(context)),
 };
 
 function main(argv) {
@@ -135,7 +236,7 @@ function main(argv) {
   try {
     const out = fn(args);
     process.stdout.write(typeof out === 'string' ? out : JSON.stringify(out, null, 2) + '\n');
-    return 0;
+    return process.exitCode ?? 0;
   } catch (e) {
     if (!(e instanceof KbeeError)) throw e;
     process.stdout.write(JSON.stringify({ error: { code: e.code, message: e.message } }) + '\n');
