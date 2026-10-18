@@ -1,0 +1,106 @@
+# Skills reference
+
+Invoke a skill by name in plain language ("use kbee-feature to …"), or as a slash command (`/kbee-feature`) in agents that support them. Most people only use the first three skills. The stage skills run inside `kbee-feature`, but you can run any of them on its own.
+
+Every skill follows the same three rules:
+
+1. **It reads the KB first** and checks for stale repos.
+2. **Facts need your yes**, while bookkeeping is saved automatically.
+3. **Pushes always need your yes.**
+
+---
+
+## kbee-init
+
+Sets up a knowledge base, or joins an existing one.
+
+- **Asks:** new or existing KB, where to put it, and your repo links. For a monorepo it also asks whether to treat each package separately.
+- **Writes:** the whole KB (see [Knowledge base format](kb-format.md)). If you allow it, it also adds a pointer block to each code repo's `AGENTS.md`.
+- **You approve:** one summary of the whole KB, the push, and each pointer.
+- **Joining an existing KB:** it clones or finds the listed repos, records your local paths in `.kbee.local.json`, and reports what's stale. It doesn't rebuild anything.
+
+**Example prompts:** "set up kbee for these repos: …", "join our KB at git@github.com:acme/shop-kb.git".
+
+## kbee-feature
+
+Runs the whole flow: Spec, then a pause for your approval, then Plan, then another pause, then Build, Review and Ship, with Sync after every stage.
+
+- **Resumes** unfinished features from `features/<slug>/status.json`.
+- **Stops on its own** only for:
+  - the two approvals
+  - a dirty working tree
+  - destructive steps
+  - a plan that's badly wrong
+  - 3 review rounds that still have blocking findings
+  - the push
+
+**Example prompts:** "kbee-feature: let customers cancel unpaid orders", "resume the order-cancellation feature".
+
+## kbee-kb
+
+Your interface to the KB itself. It has four intents:
+
+| Intent | Example | What happens |
+|--------|---------|--------------|
+| Ask | "which repos read the orders table?" | It answers with citations. If neither the KB nor the code knows, it says "I don't know" and logs a gap. |
+| Expand | "document how auth works across repos" | It researches the code, drafts cited text, verifies it, and shows you. It writes on your yes. |
+| Add a repo | "add ../shop-worker to the KB" | It scans the repo and proposes `repos/shop-worker/` plus system map and contract updates. |
+| Fix | "the KB is wrong about the API port" | It checks your correction against the code, then proposes the fix. |
+
+## kbee-spec
+
+**Stage 1.** Turns an idea into `features/<slug>/spec.md`:
+
+- the problem
+- testable acceptance criteria
+- the affected repos
+- the contracts touched, with every consumer of each
+- what's out of scope
+- open questions
+
+It asks you questions only where the idea is ambiguous. The slug comes from the title, for example `order-cancellation`.
+
+## kbee-plan
+
+**Stage 2.** It needs an approved spec. It writes `plan.md` with tasks grouped per repo and a dependency order across repos (producers before consumers). Each task names its test. If it finds a consumer the spec missed, it flags it.
+
+## kbee-build
+
+**Stage 3.** It needs an approved plan. In each repo it:
+
+1. checks the working tree is clean
+2. updates the default branch
+3. creates `kbee/<slug>`
+4. builds test-first, one repo at a time: failing test, smallest fix, full suite, commit
+
+Any changes to the plan are written into `plan.md`. **It never pushes.**
+
+## kbee-review
+
+**Stage 4.** It checks:
+
+- each acceptance criterion has code and a test
+- bugs
+- the repo's conventions
+- a fresh test run
+- **every changed contract against every consumer** in the KB
+
+It writes `review.md`, with findings marked blocking or non-blocking. Blocking findings send the feature back to Build.
+
+## kbee-ship
+
+**Stage 5.** It shows you the branches, the PR titles and the merge order, and asks **once**. Then it pushes and opens a PR per repo, cross-linked to each other. Without `gh`, it pushes and gives you ready-to-paste PR descriptions. It never merges or deploys.
+
+## kbee-sync
+
+Keeps the KB true to each repo's default branch.
+
+- **Feature mode** runs at the end of each stage. It records the planned KB changes in `features/<slug>/pending.md`, never in the facts themselves.
+- **Merge mode** runs when you ask, or after PRs merge. It:
+  1. finds merged features and changed code
+  2. rereads it and verifies the new text
+  3. shows you the changes
+  4. writes them on your yes
+  5. records the new synced commit
+
+  If you decline a change, that repo stays marked stale, so the outdated fact keeps getting flagged. If the network is down, it won't update facts at all.

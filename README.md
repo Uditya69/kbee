@@ -17,6 +17,8 @@ Then, in your coding agent:
 
 That's it. Use **`kbee-kb`** any time to ask the KB questions, or to grow it.
 
+📖 **New here? Read the [user guide](docs/README.md)**: [getting started](docs/getting-started.md), [skills](docs/skills.md), [teams](docs/teams.md), [KB format](docs/kb-format.md), [agents](docs/agents.md), and [troubleshooting](docs/troubleshooting.md).
+
 ## Why
 
 Coding agents see one repo at a time and forget everything between sessions. Real systems span an API, a web app, shared types, and workers. So changes break things in repos the agent never looked at.
