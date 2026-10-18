@@ -41,3 +41,31 @@ for (const name of skillNames()) {
     }
   });
 }
+
+const EXPECTED_SKILLS = ['kbee-build', 'kbee-feature', 'kbee-init', 'kbee-kb', 'kbee-plan', 'kbee-review', 'kbee-ship', 'kbee-spec', 'kbee-sync'];
+
+test('exactly the nine kbee skills ship', () => {
+  assert.deepEqual(skillNames(), EXPECTED_SKILLS);
+});
+
+test('README shows the install command and the first skill to run', () => {
+  const readme = fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8');
+  assert.ok(readme.includes('npx skills add'));
+  assert.ok(readme.includes('kbee-init'));
+});
+
+// Organization-specific terms that must never appear in this repo. Extend as needed.
+const DENYLIST = ['example-corp'];
+
+test('no tracked file mentions an organization-specific term', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const files = execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
+  const self = path.relative(ROOT, fileURLToPath(import.meta.url)).split(path.sep).join('/');
+  const hits = [];
+  for (const f of files) {
+    if (f === self || f.startsWith('docs/plans/')) continue; // plans quote this list
+    const text = fs.readFileSync(path.join(ROOT, f), 'utf8').toLowerCase();
+    for (const term of DENYLIST) if (text.includes(term)) hits.push(`${f}: ${term}`);
+  }
+  assert.deepEqual(hits, []);
+});
