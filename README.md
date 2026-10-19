@@ -10,14 +10,19 @@ It works in any agent that reads [Agent Skills](https://agentskills.io): Claude 
 npx skills add oct8-studio/kbee
 ```
 
-Then, in your coding agent:
+Then there's **one command** to remember:
 
-1. **`kbee-init`**: give it your repo links. It builds the KB and shows you one summary to approve.
-2. **`kbee-feature`**: describe what to build. It writes a spec and a plan (pausing for your approval after each), then builds test-first, reviews against cross-repo contracts, and opens linked PRs once you say yes.
+```
+/kbee build PROJ-123                           # a Jira ticket
+/kbee build "let users cancel unpaid orders"   # or just write what you want
+/kbee build https://figma.com/design/…         # or start from a design
+```
 
-That's it. Use **`kbee-kb`** any time to ask the KB questions, or to grow it.
+kbee reads the ticket and any linked designs, writes a spec, plans the work across your repos, builds it test-first, reviews it against every repo that depends on the change, and opens linked PRs. **It asks you three things:** is the spec right, is the plan right, and can it open the PRs.
 
-📖 **New here? Read the [user guide](docs/README.md)**: [getting started](docs/getting-started.md), [skills](docs/skills.md), [teams](docs/teams.md), [KB format](docs/kb-format.md), [agents](docs/agents.md), and [troubleshooting](docs/troubleshooting.md).
+The first time, it sets up the knowledge base for you (it asks for your repo links). Other things you can say: `/kbee ask "who calls POST /orders?"`, `/kbee sync`, or just `/kbee` to see where things stand.
+
+📖 **New here? Read the [user guide](docs/README.md)**: [getting started](docs/getting-started.md), [Jira and Figma](docs/integrations.md), [skills](docs/skills.md), [teams](docs/teams.md), [KB format](docs/kb-format.md), [agents](docs/agents.md), and [troubleshooting](docs/troubleshooting.md).
 
 ## Why
 
@@ -50,13 +55,16 @@ shop-kb/
 
 ## The skills
 
+**You only need `/kbee`.** It runs the right one of these for you:
+
 | Skill | Stage |
 |-------|-------|
+| `kbee` | The one command: build, init, ask, sync, status |
 | `kbee-init` | Set up a KB, or join your team's existing one |
 | `kbee-feature` | Run all the stages below, start to finish |
 | `kbee-spec` | 1. Spec, including the affected repos and contracts |
 | `kbee-plan` | 2. Tasks per repo, producers before consumers |
-| `kbee-build` | 3. Test-first implementation on `kbee/<slug>` branches |
+| `kbee-implement` | 3. Test-first implementation on `kbee/<slug>` branches |
 | `kbee-review` | 4. Correctness, and contract checks against every consumer |
 | `kbee-ship` | 5. Push and open cross-linked PRs, after one yes |
 | `kbee-sync` | 6. Keep the KB true, including after merges |

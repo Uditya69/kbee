@@ -92,8 +92,11 @@ A type name with a citation is not a shape.
   "repos": ["shop-types", "shop-api", "shop-web"],
   "branches": { "shop-api": "kbee/order-cancellation" },
   "prs": { "shop-api": "https://github.com/example/shop-api/pull/12" },
-  "pending": ["contracts/orders-api.md: add POST /orders/:id/cancel"]
+  "pending": ["contracts/orders-api.md: add POST /orders/:id/cancel"],
+  "source": { "type": "jira", "key": "SHOP-42", "url": "https://example.atlassian.net/browse/SHOP-42", "figma": [] }
 }
 ```
+
+`source` records where the requirements came from: `type` is `jira`, `github`, `figma`, or `text`. It's empty for plain text.
 
 `stage` is one of `spec`, `plan`, `build`, `review`, `ship`, or `done`.

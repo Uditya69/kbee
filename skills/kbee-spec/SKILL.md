@@ -17,9 +17,24 @@ Run the gap check from **kbee-sync**: `node <skill-dir>/scripts/kbee-tool.mjs st
 
 Then read `system-map.md`, the relevant `repos/*/overview.md`, and every contract the idea might touch.
 
-## 2. Understand the idea
+## 2. Gather the requirements
 
-Ask questions only where the idea is ambiguous and a wrong guess would change what gets built. Ask one at a time. When the KB answers something, don't ask.
+The input can be a ticket, a design link, plain text, or a mix. Work out which it is without asking.
+
+| Input | How to read it |
+|-------|----------------|
+| **Jira** ticket ID (`PROJ-123`) or Atlassian URL | Use your agent's Jira or Atlassian tool (an MCP connection) to fetch the summary, description, acceptance criteria, comments, attachments, and linked issues and pages. Follow links to Confluence pages and **Figma** frames that the ticket mentions. |
+| **Figma** link | Use your agent's Figma tool to get the frames, components and design tokens, plus a screenshot of each frame you rely on. |
+| GitHub issue URL | `gh issue view <url> --comments`, or your agent's GitHub tool. |
+| Plain text | Use it as written. |
+
+**If a tool isn't connected**, say so in one line, point to `docs/integrations.md` in the kbee repo for how to connect it, and ask the user to **paste** the ticket text (or a screenshot of the design) instead. Then carry on. Never stop the flow over a missing connection.
+
+Record where the requirements came from in `status.json.source`, for example `{ "type": "jira", "key": "PROJ-123", "url": "…", "figma": ["…"] }`. Cite them in the spec as `[source: <url>]`.
+
+Take the **acceptance criteria from the ticket** when it has them, then add any the KB shows are needed. For example: "the Excel export must include the new metric too".
+
+Ask questions only where the requirements are ambiguous and a wrong guess would change what gets built. Ask them all in one message. When the KB or the ticket answers something, don't ask.
 
 ## 3. Create the feature folder
 

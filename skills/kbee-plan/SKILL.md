@@ -39,6 +39,7 @@ Rules:
 - Every task names its **test**. Use the repo's own test framework and conventions.
 - Every change to a contract lists the consumers that need to change, matching the spec's **contracts** section. If you find a consumer the spec missed, add it to the plan and flag it to the user.
 - Keep tasks small: one reviewable change each.
+- **UI tasks with a design:** if `status.json.source` has **Figma** links, attach the relevant frame link to each UI task, along with the components and design tokens it uses. Reuse the repo's existing components wherever they match the design.
 
 ## 4. Hand off
 

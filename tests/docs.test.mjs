@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const GUIDES = ['getting-started.md', 'skills.md', 'teams.md', 'kb-format.md', 'agents.md', 'troubleshooting.md'];
+const GUIDES = ['getting-started.md', 'skills.md', 'teams.md', 'kb-format.md', 'agents.md', 'troubleshooting.md', 'integrations.md'];
 
 test('the user guide exists and the README links to it', () => {
   const index = path.join(ROOT, 'docs/README.md');

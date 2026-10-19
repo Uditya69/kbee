@@ -1,9 +1,9 @@
 ---
-name: kbee-build
+name: kbee-implement
 description: Implement an approved kbee feature plan across repos, test-first, in the plan's dependency order. Use as stage 3 of kbee-feature, or when the user says "build the plan" or "implement this feature".
 ---
 
-# kbee-build
+# kbee-implement
 
 Stage 3 of 6. Read [references/kb-layout.md](references/kb-layout.md) and [references/approval-rules.md](references/approval-rules.md).
 

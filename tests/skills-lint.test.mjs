@@ -42,16 +42,16 @@ for (const name of skillNames()) {
   });
 }
 
-const EXPECTED_SKILLS = ['kbee-build', 'kbee-feature', 'kbee-init', 'kbee-kb', 'kbee-plan', 'kbee-review', 'kbee-ship', 'kbee-spec', 'kbee-sync'];
+const EXPECTED_SKILLS = ['kbee', 'kbee-feature', 'kbee-implement', 'kbee-init', 'kbee-kb', 'kbee-plan', 'kbee-review', 'kbee-ship', 'kbee-spec', 'kbee-sync'];
 
-test('exactly the nine kbee skills ship', () => {
+test('exactly the ten kbee skills ship', () => {
   assert.deepEqual(skillNames(), EXPECTED_SKILLS);
 });
 
 test('README shows the install command and the first skill to run', () => {
   const readme = fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8');
   assert.ok(readme.includes('npx skills add'));
-  assert.ok(readme.includes('kbee-init'));
+  assert.ok(readme.includes('/kbee build'));
 });
 
 // Organization-specific terms that must never appear in this repo. Extend as needed.

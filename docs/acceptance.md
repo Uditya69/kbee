@@ -28,7 +28,10 @@ Open the agent in `$WS`.
 | 5 | Run `kbee-feature`: "add order cancellation". | It pauses after Spec and after Plan. The spec lists all three repos. The plan orders shop-types, then shop-api, then shop-web. Branches `kbee/<slug>` exist in all three, with tests. `review.md` exists. It asks before pushing. |
 | 6 | Commit a change to `shop-api/src/orders.ts` on main, then run any kbee skill. | The gap check flags shop-api as stale and lists the KB files that cite `src/orders.ts`. |
 | 7 | Run `kbee-sync` after merging the feature branch into main in each repo. | It proposes KB fact updates from `pending.md`, writes only after a yes, and updates `syncedSha`. |
-| 8 | Run with Node unavailable (for example `PATH` without node). | Steps 1 and 6 still work through the manual git fallbacks. |
+| 8a | `/kbee build "add order cancellation"` in a workspace with **no KB**. | It sets up the KB first (step 1), then continues into the build without asking you to start again. |
+| 8b | `/kbee build SHOP-1` with **no Jira connection**. | One line saying Jira isn't connected, then it asks you to paste the ticket, and continues. |
+| 8c | `/kbee build <real ticket>` with Jira connected. | The spec uses the ticket's acceptance criteria and cites `[source: <ticket url>]`. Before the PRs, it asks once about pushing and about posting to the ticket. The ticket status is unchanged. |
+| 9 | Run with Node unavailable (for example `PATH` without node). | Steps 1 and 6 still work through the manual git fallbacks. |
 
 ## Results
 

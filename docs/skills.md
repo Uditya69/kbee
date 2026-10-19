@@ -1,5 +1,7 @@
 # Skills reference
 
+**Most people only ever type `/kbee`.** It runs the right skill below for you. This page is for when you want to know what's happening underneath, or to run one stage on its own.
+
 Invoke a skill by name in plain language ("use kbee-feature to …"), or as a slash command (`/kbee-feature`) in agents that support them. Most people only use the first three skills. The stage skills run inside `kbee-feature`, but you can run any of them on its own.
 
 Every skill follows the same three rules:
@@ -9,6 +11,21 @@ Every skill follows the same three rules:
 3. **Pushes always need your yes.**
 
 ---
+
+## kbee
+
+The one command.
+
+| You type | It runs |
+|----------|---------|
+| `/kbee build PROJ-123`, `/kbee build "<requirements>"`, `/kbee build <figma link>` | **kbee-feature**, setting up the KB first if there isn't one |
+| `/kbee init` | **kbee-init** |
+| `/kbee ask "<question>"` | **kbee-kb** (Ask) |
+| `/kbee add <repo>`, "document X" | **kbee-kb** |
+| `/kbee sync` | **kbee-sync** |
+| `/kbee` | Status: the KB, stale repos, unfinished features, and the next step |
+
+You're asked to review three times: the spec, the plan, and before the PRs open.
 
 ## kbee-init
 
@@ -49,7 +66,7 @@ Your interface to the KB itself. It has four intents:
 
 ## kbee-spec
 
-**Stage 1.** Turns an idea into `features/<slug>/spec.md`:
+**Stage 1.** Turns a Jira ticket, a Figma design, a GitHub issue, or plain text into `features/<slug>/spec.md`. Tickets and designs are fetched through your agent's connected tools (see [Jira and Figma](integrations.md)), or you can paste them in. The spec contains:
 
 - the problem
 - testable acceptance criteria
@@ -64,7 +81,7 @@ It asks you questions only where the idea is ambiguous. The slug comes from the 
 
 **Stage 2.** It needs an approved spec. It writes `plan.md` with tasks grouped per repo and a dependency order across repos (producers before consumers). Each task names its test. If it finds a consumer the spec missed, it flags it.
 
-## kbee-build
+## kbee-implement
 
 **Stage 3.** It needs an approved plan. In each repo it:
 
@@ -89,7 +106,7 @@ It writes `review.md`, with findings marked blocking or non-blocking. Blocking f
 
 ## kbee-ship
 
-**Stage 5.** It shows you the branches, the PR titles and the merge order, and asks **once**. Then it pushes and opens a PR per repo, cross-linked to each other. Without `gh`, it pushes and gives you ready-to-paste PR descriptions. It never merges or deploys.
+**Stage 5.** It shows you the branches, the PR titles and the merge order, and asks **once**. If the work came from a ticket, it also offers to post the PR links on it (it never changes the ticket's status unless you ask). Then it pushes and opens a PR per repo, cross-linked to each other. Without `gh`, it pushes and gives you ready-to-paste PR descriptions. It never merges or deploys.
 
 ## kbee-sync
 

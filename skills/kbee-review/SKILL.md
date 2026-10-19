@@ -19,6 +19,7 @@ For each repo, check:
 - Bugs: wrong logic, unhandled errors, edge cases the tests miss.
 - Does the code follow `repos/<repo>/conventions.md`?
 - Does the full test suite pass? Run it, and don't trust earlier runs.
+- **UI changes with a design:** if `status.json.source` has Figma links and your agent can see both the design and the running UI (a Figma tool plus a browser or screenshots), check the UI **against the design**: layout, states, copy, and tokens. Note differences as non-blocking, unless they break an acceptance criterion.
 
 ## 3. Check the contracts
 
@@ -42,7 +43,7 @@ This is the check single-repo reviews can't do.
 
 ## 5. Hand off
 
-- With any **blocking** findings, go back to **kbee-build** with the list. kbee-feature limits this loop to 3 rounds, then asks the user.
+- With any **blocking** findings, go back to **kbee-implement** with the list. kbee-feature limits this loop to 3 rounds, then asks the user.
 - With none, set `status.json.stage` to `review` and hand off to **kbee-ship**.
 
 Run **kbee-sync** feature mode, then commit the KB (`kb: review <slug>`) so `review.md` and `status.json` are shared.

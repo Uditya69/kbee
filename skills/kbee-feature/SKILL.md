@@ -1,6 +1,6 @@
 ---
 name: kbee-feature
-description: Take a feature from idea to cross-linked pull requests across all affected repos - spec, plan, build, review, ship, and KB sync - using the kbee knowledge base. Pauses for approval after the spec and after the plan. Use when the user says "build this feature", "kbee feature", "add X across our repos", or wants to resume a kbee feature.
+description: Take a feature from a Jira ticket, Figma design, or plain-text idea to cross-linked pull requests across all affected repos - spec, plan, build, review, ship, and KB sync - using the kbee knowledge base. Pauses for approval after the spec and after the plan. Use when the user says "build this feature", "kbee feature", "add X across our repos", or wants to resume a kbee feature.
 ---
 
 # kbee-feature
@@ -11,7 +11,7 @@ Runs the six kbee stages in order. Each stage has its own skill. If a stage skil
 |-------|-------|--------|
 | 1. Spec | **kbee-spec** | `features/<slug>/spec.md` |
 | 2. Plan | **kbee-plan** | `features/<slug>/plan.md` |
-| 3. Build | **kbee-build** | branches `kbee/<slug>` with tested commits |
+| 3. Build | **kbee-implement** | branches `kbee/<slug>` with tested commits |
 | 4. Review | **kbee-review** | `features/<slug>/review.md` |
 | 5. Ship | **kbee-ship** | cross-linked PRs |
 | 6. Sync | **kbee-sync** | KB kept true (runs at the end of every stage) |
@@ -35,7 +35,7 @@ Check `features/*/status.json` for features whose `stage` isn't `done`.
 
 ## 2. Spec, then pause
 
-Run **kbee-spec**. Then **pause** and show the user:
+Run **kbee-spec** with whatever the user gave you: a Jira ticket ID or URL, a Figma link, a GitHub issue, plain-text requirements, or a mix. kbee-spec fetches tickets and designs through the agent's connected tools. Then **pause** and show the user:
 
 - the acceptance criteria
 - the affected repos and contracts
@@ -53,9 +53,9 @@ These two pauses, after Spec and after Plan, are the only check-ins before shipp
 
 ## 4. Build and review
 
-1. Run **kbee-build**.
+1. Run **kbee-implement**.
 2. Run **kbee-review**.
-3. If the review has blocking findings, run **kbee-build** again with those findings, then **kbee-review** again. After 3 rounds that still have blocking findings, stop and ask the user how to proceed.
+3. If the review has blocking findings, run **kbee-implement** again with those findings, then **kbee-review** again. After 3 rounds that still have blocking findings, stop and ask the user how to proceed.
 
 Stop and ask during build only for:
 

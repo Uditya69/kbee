@@ -1,5 +1,7 @@
 # Getting started
 
+**The short version:** install, then type `/kbee build PROJ-123` (or `/kbee build "what you want"`). The first time, kbee asks for your repo links and builds the knowledge base. After that it asks you just three things: is the spec right, is the plan right, and can it open the PRs. The rest of this page walks through what happens in detail.
+
 This guide takes you from zero to a shared knowledge base (KB) and your first feature shipped across repos. It uses the example "shop" system: `shop-api`, `shop-web`, and `shop-types`. Swap in your own repos.
 
 ## 1. Install
@@ -30,11 +32,11 @@ Open your agent in `~/code/shop/` (the parent folder), so it can see every repo.
 
 ## 3. Build the knowledge base
 
-Tell your agent:
+Type:
 
-> Use kbee-init to set up a knowledge base for ../shop-api, ../shop-web and ../shop-types.
+> /kbee init
 
-(Or just type `/kbee-init` in agents that support slash commands.)
+and give it your repo paths or links when it asks, for example `../shop-api ../shop-web ../shop-types`. You can also skip this step: `/kbee build` sets up the KB first if it can't find one.
 
 kbee will:
 
@@ -52,13 +54,19 @@ Push the KB to a remote (for example `github.com/you/shop-kb`) so teammates can 
 
 ## 4. Ask the KB something
 
-> Use kbee-kb: which repos consume POST /orders?
+> /kbee ask "which repos consume POST /orders?"
 
 You get an answer with citations into the code. If the KB doesn't know, it says so and logs the question in `gaps.md`. It won't guess.
 
 ## 5. Build your first feature
 
-> Use kbee-feature: add order cancellation.
+> /kbee build "add order cancellation"
+
+or, with a ticket:
+
+> /kbee build SHOP-42
+
+With a Jira or Figma connection set up ([Jira and Figma](integrations.md)), kbee reads the ticket, its acceptance criteria, and any linked designs itself.
 
 What happens, and where you're involved:
 
@@ -77,7 +85,7 @@ You can stop at any time. Running `kbee-feature` again **resumes** from where it
 
 ## 6. After the PRs merge
 
-> Use kbee-sync.
+> /kbee sync
 
 kbee notices the merge, rereads the merged code, and **shows you** the KB updates (for example, the new cancel endpoint in `contracts/orders-api.md`). It writes them after your yes, then records the new synced commit.
 

@@ -3,6 +3,7 @@
 | Guide | Read it when |
 |-------|--------------|
 | [Getting started](getting-started.md) | You're new. It covers installing kbee and running your first knowledge base and feature, end to end. |
+| [Jira and Figma](integrations.md) | You want `/kbee build PROJ-123` to read your tickets and designs. |
 | [Skills reference](skills.md) | You want to know what a skill does, what it asks you, and what it writes. |
 | [Working as a team](teams.md) | More than one person (or agent) shares the knowledge base. |
 | [Knowledge base format](kb-format.md) | You want to read or hand-edit the knowledge base, or understand citations. |

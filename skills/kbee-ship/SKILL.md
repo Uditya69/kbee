@@ -18,6 +18,7 @@ Show what will happen, then ask once for all repos:
 - each repo, its branch `kbee/<slug>`, and its commit count
 - the PR title: `<Title>` (`[n/N]` when more than one repo)
 - the merge order from `plan.md` (producers first)
+- if the feature came from a ticket: "Also post the PR links to <ticket>?" (see 3b)
 
 Push only after a yes. Partial yeses are fine: ship only the repos the user approved.
 
@@ -43,6 +44,14 @@ Part of <Title> [n/N]. Merge in this order:
 Acceptance criteria: <from spec.md>
 Contracts changed: <from spec.md>
 ```
+
+Add a line to every PR body linking the source ticket, if there is one (`status.json.source.url`).
+
+## 3b. Update the ticket
+
+If the feature came from a ticket and your agent has the tool for it (Jira, GitHub Issues), offer to **comment on the ticket** with the PR links, the merge order, and a two-line summary of the spec. Ask before posting: comments are visible to the team. Put the question together with the push question in step 2, so it's one prompt, not two.
+
+**Never change the ticket status unless** the user asks for it (for example "and move it to In Review").
 
 ## 4. No PR tool?
 

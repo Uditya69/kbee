@@ -44,4 +44,6 @@ If there are several KBs next to each other and none of them lists your repo, kb
 
 **The KB said something wrong. Now what?** Tell **kbee-kb**: "the KB is wrong about X". It checks your correction against the code and proposes a fix.
 
+**I upgraded and still see `kbee-build`.** The stage was renamed to `kbee-implement`. Remove the old copy with `npx skills remove kbee-build`. You never need to call either one directly: `/kbee build` runs it.
+
 **How do I uninstall?** Run `npx skills remove kbee-init kbee-feature …`, or `npx skills remove` and pick the skills. Your KB repo is untouched. It's just files.
