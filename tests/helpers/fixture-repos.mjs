@@ -61,9 +61,11 @@ export async function makeWorkspace() {
     }
   };
   rewrite(kbDir);
+  const example = JSON.parse(fs.readFileSync(path.join(EXPECTED_KB, 'manifest.json'), 'utf8'));
   writeJson(path.join(kbDir, 'manifest.json'), {
     kbeeVersion: 1,
     mode: 'direct',
+    rulesVersion: example.rulesVersion,
     repos: REPO_NAMES.map((name) => ({
       name,
       url: `https://example.com/shop/${name}.git`,

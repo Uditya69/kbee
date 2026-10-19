@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export class KbeeError extends Error {
   constructor(code, message) {
@@ -14,6 +14,10 @@ export class KbeeError extends Error {
 }
 
 const NAME_RE = /^[a-z0-9][a-z0-9._-]*$/;
+
+// Bump with every change to how a KB should be built, and add a `## vN` entry to references/rules-changelog.md.
+export const RULES_VERSION = 2;
+const CHANGELOG = path.join(path.dirname(fileURLToPath(import.meta.url)), '../references/rules-changelog.md');
 
 // Never let git block on a credential prompt or a GUI sign-in.
 export function gitEnv() {
@@ -32,6 +36,7 @@ export function validateManifest(obj) {
   const errors = [];
   if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return ['manifest must be a JSON object'];
   if (obj.kbeeVersion !== 1) errors.push('kbeeVersion must be 1');
+  if (obj.rulesVersion !== undefined && !(Number.isInteger(obj.rulesVersion) && obj.rulesVersion >= 1)) errors.push('rulesVersion must be a positive integer');
   if (obj.mode !== undefined && obj.mode !== 'direct' && obj.mode !== 'pr') errors.push("mode must be 'direct' or 'pr'");
   if (!Array.isArray(obj.repos)) return [...errors, 'repos must be an array'];
   const seen = new Set();
@@ -245,7 +250,8 @@ export function validateKb(kbDir) {
 }
 
 export function showCitation(kbDir, raw, context = 3) {
-  const [c] = parseCitations(raw);
+  const trimmed = raw.trim();
+  const [c] = parseCitations(trimmed.startsWith('[') ? trimmed : `[${trimmed}]`);
   if (!c || c.kind !== 'code') throw new KbeeError('BAD_CITATION', `not a code citation: ${raw}`);
   const lines = readAt(kbDir, c);
   const from = Math.max(1, c.line - context);
@@ -326,7 +332,37 @@ export function setSynced(kbDir, name, sha) {
   return manifest;
 }
 
+function changelogEntries() {
+  const text = fs.existsSync(CHANGELOG) ? fs.readFileSync(CHANGELOG, 'utf8') : '';
+  const parts = text.split(/^## v(\d+)\b.*$/m);
+  const out = [];
+  for (let i = 1; i < parts.length; i += 2) out.push({ version: Number(parts[i]), text: parts[i + 1].trim() });
+  return out;
+}
+
+export function rulesStatus(kbDir) {
+  const kbRulesVersion = loadManifest(kbDir).rulesVersion ?? 1;
+  return {
+    kbRulesVersion,
+    currentRulesVersion: RULES_VERSION,
+    outdated: kbRulesVersion < RULES_VERSION,
+    changes: changelogEntries().filter((e) => e.version > kbRulesVersion && e.version <= RULES_VERSION).sort((a, b) => a.version - b.version),
+  };
+}
+
+export function setRulesVersion(kbDir, version) {
+  const v = Number(version);
+  const manifest = loadManifest(kbDir);
+  if (!Number.isInteger(v) || v > RULES_VERSION) throw new KbeeError('RULES_UNKNOWN', `rules v${version} is not known to this kbee (current is v${RULES_VERSION})`);
+  if (v < (manifest.rulesVersion ?? 1)) throw new KbeeError('RULES_BACKWARDS', `KB is already at rules v${manifest.rulesVersion}`);
+  manifest.rulesVersion = v;
+  fs.writeFileSync(path.join(kbDir, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
+  return manifest;
+}
+
 const COMMANDS = {
+  rules: ([kbDir]) => rulesStatus(kbDir),
+  'set-rules': ([kbDir, version]) => setRulesVersion(kbDir, version),
   stale: ([kbDir, ...flags]) => staleness(kbDir, { fetch: !flags.includes('--no-fetch') }),
   'set-synced': ([kbDir, name, sha]) => setSynced(kbDir, name, sha),
   find: ([dir = process.cwd()]) => ({ kbDir: findKb(dir), candidates: findKbCandidates(dir) }),

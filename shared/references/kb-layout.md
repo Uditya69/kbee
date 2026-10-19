@@ -17,7 +17,16 @@ The KB is its own git repo, separate from the code repos. It holds plain Markdow
   .kbee.local.json       # per-person local paths; git-ignored, never committed
 ```
 
-Fact files are `system-map.md`, `repos/`, `contracts/`, and `decisions/`. They describe each repo's **default branch** only. Keep them summary-level: what a developer needs to work across repos, not every internal function.
+Fact files are `system-map.md`, `repos/`, `contracts/`, and `decisions/`. They describe each repo's **default branch** only. Keep them summary-level: no per-function detail, but enough that a developer could add a field end to end across the repos without rediscovering the code.
+
+## Required sections
+
+- `system-map.md`: a repo table, a Mermaid diagram, links to the contracts, and `## Common changes` (the 1–3 most likely cross-repo changes: the files to touch in producer → consumer order, each cited, plus known traps).
+- `repos/<repo>/overview.md`: purpose, stack, entry points, run/test/build, and these sections:
+  - `## Data flow and domain model` for repos that own data: source → transforms → stored shape → readers, and how derived stores are rebuilt or backfilled
+  - `## Scripts`: every file under `scripts/`, `bin/` or `tools/`
+  - `## Runtime model`: jobs, in-memory state, whether it can run more than one instance, health checks, and what CI gates
+- `contracts/shared-logic.md` when code is mirrored across repos: every copy cited, and any drift.
 
 ## manifest.json
 
@@ -25,6 +34,7 @@ Fact files are `system-map.md`, `repos/`, `contracts/`, and `decisions/`. They d
 {
   "kbeeVersion": 1,
   "mode": "direct",
+  "rulesVersion": 2,
   "repos": [
     {
       "name": "shop-api",
@@ -39,6 +49,7 @@ Fact files are `system-map.md`, `repos/`, `contracts/`, and `decisions/`. They d
 ```
 
 - `name` matches `^[a-z0-9][a-z0-9._-]*$` and is used in citations. In a monorepo, each package or app gets its own entry, and `pathHint` points at the package folder.
+- `rulesVersion` is the kbee rules version this KB was built or last upgraded to (missing means 1). See `rules-changelog.md`. **kbee-sync** upgrade mode brings an older KB up to date.
 - `mode` is `"direct"` (commit KB changes to the default branch) or `"pr"` (KB changes go through PRs).
 - `pathHint` is relative to the KB folder.
 
@@ -53,6 +64,12 @@ This file overrides `pathHint` for one person. Add it to the KB's `.gitignore`.
 ## contracts/<topic>.md
 
 Each contract names its **producer** (the repo that defines it), its **consumers** (repos that use it), and its shape, each with citations. Reviews check changes against this file.
+
+**Shape is field-level:**
+- every field (name, type, required or optional) of every request body, query param set and response, including nested objects
+- the semantics consumers rely on: units, time zone, defaults, inclusive or exclusive bounds
+
+A type name with a citation is not a shape.
 
 ## features/<slug>/
 

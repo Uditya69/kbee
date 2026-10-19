@@ -54,6 +54,8 @@ Other agents in the `skills` CLI list (for example `gemini-cli`, `windsurf`, `op
 | `show <kb> "<citation>"` | Prints the cited lines. |
 | `stale <kb> [--no-fetch]` | Lists out-of-date repos and the KB files affected. |
 | `set-synced <kb> <repo> <sha>` | Records a verified sync. |
+| `rules <kb>` | Checks whether the KB was built with older kbee rules. |
+| `set-rules <kb> <version>` | Records a rules upgrade. |
 
 Without Node, the skills tell the agent how to do each step with plain git. It's slower, but works the same.
 

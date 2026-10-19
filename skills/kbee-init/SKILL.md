@@ -34,9 +34,14 @@ For each repo, at its default-branch SHA, extract raw facts with a citation for 
 
 - purpose (README) and stack (manifests such as `package.json`, `pyproject.toml`, `go.mod`, `pom.xml`)
 - entry points, and how to run, test, and build (scripts, Makefile, CI config)
-- what it exposes: HTTP routes, events and topics, exported types, CLI commands, database tables
+- what it exposes: HTTP routes, events and topics, exported types, database tables, and CLI commands, **including every file under `scripts/`, `bin/` or `tools/`** (one line each: purpose, and how to run it)
 - what it consumes: outbound HTTP calls, imports of other listed repos, shared packages, env/config that points at other services
+- **Data flow and domain model:** for each datastore the repo owns, trace source → transforms → stored shape (collection or table, key or `_id` format, key fields) → readers. For each derived or cached store, record how it's rebuilt or backfilled when its shape changes
+- **Mirrored code:** files with the same name or near-identical content in more than one repo, and comments like "mirrors the backend". Diff the copies. Each mirrored constant, list or business rule is a contract
+- **Runtime model:** background jobs and schedulers, in-memory state or caches (and so whether it can run more than one instance), health checks, and what CI actually gates (build, tests, typecheck)
 - conventions you see repeated at least twice: error format, naming, test layout
+
+Also read any `docs/`, ADR, RCA, design or plan files in each repo **and in the folder that contains the repos** (a workspace Makefile, docker-compose, or architecture docs). They're the main source for decisions. Where a doc and the code disagree, the code wins in the facts, and the disagreement goes in `gaps.md`.
 
 **Use subagents if your agent has them.** Give each repo (or each large folder) to its own subagent, on the fastest and cheapest model available. Each one returns a list of facts with citations. If your agent has no subagents or can't choose a model, scan one repo after another on the current model. The result is the same, only slower.
 
@@ -47,17 +52,28 @@ On the strongest model available, turn the facts into the files in `references/k
 - `README.md` from [templates/kb/README.md](templates/kb/README.md), with `{{KB_NAME}}` replaced
 - `gaps.md` from [templates/kb/gaps.md](templates/kb/gaps.md)
 - `.gitignore` containing `.kbee.local.json`
-- `system-map.md`, with a table of repos, a Mermaid diagram of how they connect, and links to the contracts
-- `repos/<repo>/overview.md` and `repos/<repo>/conventions.md`
-- `contracts/<topic>.md` for each thing that crosses a repo boundary, naming its producer and consumers
-- `decisions/` only for decisions the code or docs actually state. Don't invent reasons
-- `manifest.json` with each repo's `syncedSha` set to the SHA you read
+- `system-map.md`, with a table of repos, a Mermaid diagram of how they connect, links to the contracts, and a `## Common changes` section: for the 1–3 most likely cross-repo changes (for example, adding a field to the main API), the files to touch in producer → consumer order, each cited, plus known traps
+- `repos/<repo>/overview.md` (including `## Data flow and domain model` for repos that own data, `## Scripts`, and `## Runtime model`) and `repos/<repo>/conventions.md`
+- `contracts/<topic>.md` for each thing that crosses a repo boundary, naming its producer and consumers, with **field-level shapes** as defined in `references/kb-layout.md`. Put mirrored code in `contracts/shared-logic.md`, with every copy cited and any drift noted
+- `decisions/NNNN-*.md` for decisions the code or docs actually state, cited with `[source: <doc>]`. Don't invent reasons. Create `decisions/` only if there's at least one
+- `features/.gitkeep`, always
+- `manifest.json` with each repo's `syncedSha` set to the SHA you read, and `rulesVersion` set to the current rules version. Get it from `node <skill-dir>/scripts/kbee-tool.mjs rules <kb>` (`currentRulesVersion`), then record it with `node <skill-dir>/scripts/kbee-tool.mjs set-rules <kb> <version>`
 
-Stay summary-level: what someone needs to work across repos, not every internal function. Match a cross-repo call to its producer (for example, `fetch('/orders')` in the web app matched to the `/orders` route in the API) only when the code supports the match. Otherwise record it in `gaps.md`.
+**Summary-level means** no per-function detail. It does **not** mean leaving out the path data takes from source to screen, the fields of a contract, or the traps someone changing the system would hit. The test: could a developer add a field end to end across the repos from the KB, without rediscovering the code?
+
+Match a cross-repo call to its producer (for example, `fetch('/orders')` in the web app matched to the `/orders` route in the API) only when the code supports the match.
+
+Also add to `gaps.md`:
+- doc-vs-code contradictions
+- code that looks like a cross-repo bug
+- endpoints or exports nothing consumes
+- operational unknowns (where prod runs, scaling, CI)
+
+Every surprising thing you noticed should end up in a fact file or in `gaps.md`.
 
 ## 5. Verify
 
-Run the verify pass from `references/accuracy-rules.md` on every fact file, then run:
+Run the verify pass from `references/accuracy-rules.md` on every fact file, including its **Cross-check contracts** step,, then run:
 
 ```
 node <skill-dir>/scripts/kbee-tool.mjs validate <kb>

@@ -13,6 +13,7 @@ This skill has two modes:
 
 - **Feature mode:** runs at the end of each stage of a feature. It records changes that aren't merged yet.
 - **Merge mode:** runs when PRs have merged, when the KB is stale, or when the user asks. It updates the facts.
+- **Upgrade mode:** runs when the KB was built with older kbee rules, or when the user asks ("upgrade the KB"). It brings an existing KB up to the current rules without rebuilding it.
 
 ## Gap check (both modes, run first)
 
@@ -20,7 +21,8 @@ This skill has two modes:
    - For `stale` repos, the KB files that cite changed code are listed in `affectedKbFiles`.
    - `fetchFailed: true` means the remote couldn't be reached and the result reflects local refs. Say so.
 2. Look for repos in the workspace (folders next to the KB, or ones the user mentions) that aren't in `manifest.json`. Offer to add them with the **kbee-kb** skill.
-3. Report what you found in a few lines. A `missing` repo isn't an error: offer to clone it, or to record its local path in `.kbee.local.json`.
+3. `node <skill-dir>/scripts/kbee-tool.mjs rules <kb>` compares the KB's `rulesVersion` with this kbee's. If `outdated` is true, say so (for example "this KB was built with kbee rules v1; v2 adds data flow and field-level contracts") and offer upgrade mode. Without Node: a missing `rulesVersion` in `manifest.json` means v1, and the current version is the highest `## vN` in `references/rules-changelog.md`.
+4. Report what you found in a few lines. A `missing` repo isn't an error: offer to clone it, or to record its local path in `.kbee.local.json`.
 
 ## Feature mode
 
@@ -48,6 +50,18 @@ This is bookkeeping, so write it **without asking**, and mention it in your summ
 8. **Record the sync.** Only for repos where every affected fact was re-verified and written, run `node <skill-dir>/scripts/kbee-tool.mjs set-synced <kb> <repo> <sha>` with the default-branch SHA you verified against. This bookkeeping is written without asking. If it refuses with `SHA_NOT_DESCENDANT`, you're behind the last sync: fetch, then start over.
 9. **Tidy up.** For merged features, set `status.json.stage` to `done` and clear the pending items that were applied.
 10. Commit the KB (`kb: sync <repos>`) and ask before pushing.
+
+## Upgrade mode
+
+Brings the KB up to the current rules. It only adds and corrects, and never rebuilds from scratch.
+
+1. Run `node <skill-dir>/scripts/kbee-tool.mjs rules <kb>`. Its `changes` are the entries of [references/rules-changelog.md](references/rules-changelog.md) newer than the KB's version. Each one lists the passes to apply.
+2. Make sure the KB is fresh first. If repos are stale, run merge mode before upgrading, so new facts aren't mixed with outdated ones.
+3. Tell the user which passes you'll run, and roughly how big the job is.
+4. Apply each pass, in version order, to the existing KB, at each repo's current default-branch SHA. Scan only what each pass needs. Keep existing facts unless a pass shows they're wrong.
+5. Draft, verify (the verify pass, then `validate`), then **show the changes grouped by pass** before writing. The same approval rules apply: facts need a yes, and `gaps.md` and `features/` entries are bookkeeping.
+6. Write what the user approved. Then record the upgrade: `node <skill-dir>/scripts/kbee-tool.mjs set-rules <kb> <version>`, with the highest version whose passes were all applied. If the user declined a whole pass, stop at the version before it and say so.
+7. Commit the KB (`kb: upgrade to rules v<version>`) and ask before pushing.
 
 ## Rules
 

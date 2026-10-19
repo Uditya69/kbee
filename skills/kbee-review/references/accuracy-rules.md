@@ -27,6 +27,8 @@ After drafting KB text, run a separate verify pass:
 2. Confirm that the cited lines actually support the sentence.
 3. Delete the claim, or move it to `gaps.md` as a question, if it isn't confirmed.
 
+4. **Cross-check contracts.** For every consumer behavior that depends on the producer (a header read, a field used, a status code handled), confirm the producer emits it and that nothing in between (CORS, a proxy, auth) blocks it. Record a mismatch in `gaps.md` as a possible bug, never as a fact.
+
 Never "fix" a citation by guessing another line. Reread the code instead.
 
 ## 3. Track freshness
@@ -48,6 +50,8 @@ If Node is not available, do the same thing by hand:
 | `find [dir]` | Locates the KB (see `kb-discovery.md`). | Follow the order in `kb-discovery.md`. |
 | `resolve <kb> <repo>` | Gives the repo's local path. | Use `.kbee.local.json` `repos.<name>` if present, otherwise `pathHint` relative to the KB. |
 | `validate <kb>` | Checks every citation in `system-map.md`, `repos/`, `contracts/`, `decisions/`, and reports anything shaped like `[x@y]` that isn't a valid citation as `BAD_CITATION`. | For each code citation: `git -C <repo> cat-file -e <sha>^{commit}`, then `git -C <repo> show <sha>:<path>`, then check the line range exists. Non-code citations must match the two forms above. |
-| `show <kb> "<citation>" [context]` | Prints the cited lines with context. | `git -C <repo> show <sha>:<path>` and read the lines. |
+| `show <kb> "<citation>" [context]` (brackets optional) | Prints the cited lines with context. | `git -C <repo> show <sha>:<path>` and read the lines. |
 | `stale <kb> [--no-fetch]` | Compares `syncedSha` with the remote default branch and lists the KB files that cite changed files. | `git -C <repo> fetch origin <branch>`, then `git -C <repo> diff --name-only --no-renames <syncedSha> origin/<branch>`. `--no-renames` makes renamed files appear under their old path too. Then search the KB fact files for citations of those paths. |
+| `rules <kb>` | Compares the KB's `rulesVersion` with this kbee's, and lists the newer changelog entries. | A missing `rulesVersion` means v1. The current version is the highest `## vN` in `rules-changelog.md`. |
+| `set-rules <kb> <version>` | Records an upgrade to a rules version. It never goes backwards. | Edit `rulesVersion` in `manifest.json`. |
 | `set-synced <kb> <repo> <sha>` | Records a verified sync, and refuses a SHA that doesn't descend from the current `syncedSha`. | Check `git -C <repo> merge-base --is-ancestor <syncedSha> <sha>` succeeds, then edit `manifest.json`: set `syncedSha` to the full SHA and `syncedAt` to the current ISO time. |

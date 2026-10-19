@@ -24,6 +24,7 @@ Progress lives in `features/<slug>/status.json` ([references/kb-layout.md](refer
 
 - Find the KB ([references/kb-discovery.md](references/kb-discovery.md)). If there's **no KB**, say so, offer **kbee-init**, and stop.
 - Run the gap check: `node <skill-dir>/scripts/kbee-tool.mjs stale <kb>` (without Node, use the manual fallback in [references/accuracy-rules.md](references/accuracy-rules.md)). Report stale or missing repos in one or two lines, and offer **kbee-sync** before starting.
+- Run `node <skill-dir>/scripts/kbee-tool.mjs rules <kb>`. If the KB was built with older kbee rules, mention it once and offer the **kbee-sync** upgrade mode. Don't block on it.
 
 ## 1. New feature, or resume?
 

@@ -24,6 +24,8 @@ If there are several KBs next to each other and none of them lists your repo, kb
 
 **`MANIFEST_INVALID`.** `manifest.json` has a JSON error or a bad field, and the message says which. Note that a byte-order mark at the start of the file (added by some Windows editors) currently breaks parsing. Save the file as UTF-8 without a BOM.
 
+**"This KB was built with older kbee rules."** kbee has improved since your KB was built. For example, rules v2 added data flow, field-level contracts and mirrored-logic checks. Run **kbee-sync** and say "upgrade the KB". It only adds what the newer rules require, and shows you everything first.
+
 ## FAQ
 
 **Will kbee push or merge anything without asking?** No. Every push, in the KB or the code repos, needs a yes. kbee never merges PRs.

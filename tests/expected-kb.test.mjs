@@ -25,3 +25,14 @@ test('the system map has a Mermaid diagram naming every repo', async () => {
   assert.ok(mermaid, 'no mermaid block');
   for (const name of REPO_NAMES) assert.ok(mermaid[1].includes(name), name);
 });
+
+test('the reference KB meets the current rules version', async () => {
+  const { RULES_VERSION, rulesStatus } = await import('../shared/scripts/kbee-tool.mjs');
+  const { kbDir } = await makeWorkspace();
+  assert.equal(rulesStatus(kbDir).kbRulesVersion, RULES_VERSION);
+  const read = (f) => fs.readFileSync(path.join(kbDir, f), 'utf8');
+  assert.match(read('system-map.md'), /^## Common changes/m);
+  for (const s of ['## Data flow and domain model', '## Scripts', '## Runtime model']) assert.ok(read('repos/shop-api/overview.md').includes(s), s);
+  assert.match(read('contracts/orders-api.md'), /\| *Field *\|/, 'field-level shape table');
+  assert.ok(fs.existsSync(path.join(kbDir, 'features/.gitkeep')));
+});

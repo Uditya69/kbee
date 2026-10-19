@@ -49,6 +49,7 @@ It reports missing commits, missing files, out-of-range lines, and anything shap
 {
   "kbeeVersion": 1,
   "mode": "direct",
+  "rulesVersion": 2,
   "repos": [
     {
       "name": "shop-api",
@@ -67,6 +68,7 @@ It reports missing commits, missing files, out-of-range lines, and anything shap
 | `mode` | `direct` commits KB changes to the default branch. `pr` sends them through PRs ([Working as a team](teams.md#pr-mode)). |
 | `name` | Lowercase, matching `^[a-z0-9][a-z0-9._-]*$`. Used in citations. |
 | `pathHint` | Where the repo usually is, relative to the KB folder. In a monorepo, this points at the package folder. |
+| `rulesVersion` | The kbee rules version the KB was built or last upgraded to. A missing value means 1. When kbee's rules improve, **kbee-sync** upgrade mode brings the KB up to date. |
 | `syncedSha` | The default-branch commit the facts were last verified against. kbee only moves it forward, never backwards. |
 
 ## .kbee.local.json

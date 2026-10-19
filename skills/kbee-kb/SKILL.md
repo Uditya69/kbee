@@ -9,7 +9,7 @@ Read [references/accuracy-rules.md](references/accuracy-rules.md) and [reference
 
 The helper is `<skill-dir>/scripts/kbee-tool.mjs`, where `<skill-dir>` is the folder containing this SKILL.md. If Node is not available, use the manual fallbacks in `references/accuracy-rules.md`.
 
-Before anything else, run the gap check: `node <skill-dir>/scripts/kbee-tool.mjs stale <kb>`. Mention any stale or missing repo, and offer **kbee-sync** if something is stale.
+Before anything else, run the gap check: `node <skill-dir>/scripts/kbee-tool.mjs stale <kb>`. Mention any stale or missing repo, and offer **kbee-sync** if something is stale. Also run `node <skill-dir>/scripts/kbee-tool.mjs rules <kb>`. If the KB uses older rules, mention it once and offer the **kbee-sync** upgrade mode.
 
 Work out which of the four intents the user means.
 

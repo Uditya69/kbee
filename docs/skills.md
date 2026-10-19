@@ -104,3 +104,6 @@ Keeps the KB true to each repo's default branch.
   5. records the new synced commit
 
   If you decline a change, that repo stays marked stale, so the outdated fact keeps getting flagged. If the network is down, it won't update facts at all.
+- **Upgrade mode** runs when your KB was built with older kbee rules. Every skill tells you when that's the case. It applies only the new passes from the [rules changelog](../shared/references/rules-changelog.md) to your existing KB, for example adding data flow or field-level contracts. It shows you the changes grouped by pass, writes what you approve, and records the new `rulesVersion`.
+
+  **Example prompt:** "kbee-sync: upgrade the KB to the latest rules".
