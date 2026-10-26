@@ -77,3 +77,34 @@ export async function makeWorkspace() {
   });
   return { root, kbDir, repos };
 }
+
+// One monorepo (+ bare origin): apps/api, apps/web, packages/types from the shop fixtures.
+// With `withKb`, an in-repo kbee KB at kb/ citing without commits.
+export const MONO_PACKAGES = { 'shop-api': 'apps/api', 'shop-web': 'apps/web', 'shop-types': 'packages/types' };
+
+export async function makeMonorepo({ withKb = true } = {}) {
+  const ws = tempDir('kbee-mono-');
+  const root = path.join(ws, 'shop');
+  for (const [name, dir] of Object.entries(MONO_PACKAGES)) fs.cpSync(path.join(FIXTURES, name), path.join(root, dir), { recursive: true });
+  const kbDir = path.join(root, 'kb');
+  if (withKb) {
+    writeJson(path.join(kbDir, 'manifest.json'), {
+      kbeeVersion: 1,
+      mode: 'direct',
+      location: 'in-repo',
+      rulesVersion: 2,
+      repos: Object.entries(MONO_PACKAGES).map(([name, dir]) => ({ name, url: null, defaultBranch: 'main', pathHint: `../${dir}`, syncedSha: null, syncedAt: null })),
+    });
+    fs.mkdirSync(path.join(kbDir, 'contracts'), { recursive: true });
+    fs.writeFileSync(path.join(kbDir, 'contracts/orders-api.md'), '# Orders API\n\nProducer: shop-api [shop-api:apps/api/src/orders.ts:1]\n');
+  }
+  gitT(root, ['init', '-q', '-b', 'main']);
+  gitT(root, ['add', '-A']);
+  gitT(root, ['commit', '-q', '-m', 'initial']);
+  const origin = path.join(ws, '.origins', 'shop.git');
+  fs.mkdirSync(path.dirname(origin), { recursive: true });
+  gitT(ws, ['clone', '-q', '--bare', root, origin]);
+  gitT(root, ['remote', 'add', 'origin', origin]);
+  gitT(root, ['fetch', '-q', 'origin']);
+  return { ws, root, kbDir, sha: gitT(root, ['rev-parse', 'HEAD']) };
+}

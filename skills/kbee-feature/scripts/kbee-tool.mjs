@@ -15,6 +15,11 @@ export class KbeeError extends Error {
 
 const NAME_RE = /^[a-z0-9][a-z0-9._-]*$/;
 
+// A non-empty, forward-slash path that stays inside the folder it's relative to.
+const isRelPath = (p) => typeof p === 'string' && p !== '' && !p.startsWith('/') && !/^[a-zA-Z]:/.test(p) && !p.split(/[\\/]/).includes('..');
+
+export const isInRepo = (manifest) => manifest.location === 'in-repo';
+
 // Bump with every change to how a KB should be built, and add a `## vN` entry to references/rules-changelog.md.
 export const RULES_VERSION = 2;
 const CHANGELOG = path.join(path.dirname(fileURLToPath(import.meta.url)), '../references/rules-changelog.md');
@@ -38,6 +43,8 @@ export function validateManifest(obj) {
   if (obj.kbeeVersion !== 1) errors.push('kbeeVersion must be 1');
   if (obj.rulesVersion !== undefined && !(Number.isInteger(obj.rulesVersion) && obj.rulesVersion >= 1)) errors.push('rulesVersion must be a positive integer');
   if (obj.mode !== undefined && obj.mode !== 'direct' && obj.mode !== 'pr') errors.push("mode must be 'direct' or 'pr'");
+  if (obj.location !== undefined && obj.location !== 'in-repo' && obj.location !== 'separate') errors.push("location must be 'in-repo' or 'separate'");
+  if (obj.teamDocs !== undefined && !(Array.isArray(obj.teamDocs) && obj.teamDocs.every(isRelPath))) errors.push('teamDocs must be an array of relative paths');
   if (!Array.isArray(obj.repos)) return [...errors, 'repos must be an array'];
   const seen = new Set();
   obj.repos.forEach((r, i) => {
@@ -171,8 +178,9 @@ export function findKbCandidates(startDir) {
 }
 
 // [repo@sha:path:line] or [repo@sha:path:start-end]; [source: ...];
+// in-repo KBs also use [repo:path:line], meaning the code in the same commit as the KB;
 // anything else shaped like [x@y] is a malformed citation, reported rather than skipped.
-const CITATION_RE = /\[([a-z0-9][a-z0-9._-]*)@([0-9a-f]{7,40}):([^\]:\s]+):(\d+)(?:-(\d+))?\]|\[source:\s*([^\]]+)\]|(\[[^\]\s]+@[^\]\s]+\])/g;
+const CITATION_RE = /\[([a-z0-9][a-z0-9._-]*)@([0-9a-f]{7,40}):([^\]:\s]+):(\d+)(?:-(\d+))?\]|\[source:\s*([^\]]+)\]|(\[[^\]\s]+@[^\]\s]+\])|\[([a-z0-9][a-z0-9._-]*):([^\]:\s@]+):(\d+)(?:-(\d+))?\]/g;
 const GOOD_SOURCE_RE = /^(user, \d{4}-\d{2}-\d{2}|https?:\/\/\S+)$/;
 const FACT_PATHS = ['system-map.md', 'repos', 'contracts', 'decisions'];
 
@@ -182,7 +190,10 @@ export function parseCitations(text) {
     for (const m of lineText.matchAll(CITATION_RE)) {
       if (m[7] !== undefined) out.push({ kind: 'malformed', raw: m[0], lineNo: i + 1 });
       else if (m[6] !== undefined) out.push({ kind: 'source', value: m[6].trim(), raw: m[0], lineNo: i + 1 });
-      else {
+      else if (m[8] !== undefined) {
+        const line = Number(m[10]);
+        out.push({ kind: 'code', repo: m[8], sha: null, path: m[9], line, endLine: m[11] ? Number(m[11]) : line, raw: m[0], lineNo: i + 1 });
+      } else {
         const line = Number(m[4]);
         out.push({ kind: 'code', repo: m[1], sha: m[2], path: m[3], line, endLine: m[5] ? Number(m[5]) : line, raw: m[0], lineNo: i + 1 });
       }
@@ -199,6 +210,12 @@ function fileLines(text) {
 
 function readAt(kbDir, c) {
   const dir = resolveRepo(kbDir, c.repo);
+  if (c.sha === null) {
+    // In-repo KB: the KB and the code share a working tree, so read the file as it is now.
+    const file = path.join(gitRoot(dir) ?? dir, ...c.path.split('/'));
+    if (!fs.existsSync(file) || !fs.statSync(file).isFile()) throw new KbeeError('FILE_NOT_FOUND', `${c.path} not found in ${c.repo}`);
+    return fileLines(fs.readFileSync(file, 'utf8'));
+  }
   try {
     git(dir, ['cat-file', '-e', `${c.sha}^{commit}`]);
   } catch {
@@ -211,9 +228,10 @@ function readAt(kbDir, c) {
   }
 }
 
-export function checkCitation(kbDir, c) {
+export function checkCitation(kbDir, c, manifest = loadManifest(kbDir)) {
   if (c.kind === 'malformed') return { ok: false, problem: 'BAD_CITATION' };
   if (c.kind === 'source') return GOOD_SOURCE_RE.test(c.value) ? { ok: true } : { ok: false, problem: 'BAD_SOURCE' };
+  if (c.sha === null && !isInRepo(manifest)) return { ok: false, problem: 'NEEDS_SHA' };
   try {
     const lines = readAt(kbDir, c);
     if (c.line < 1 || c.endLine < c.line || c.endLine > lines.length) return { ok: false, problem: 'LINE_OUT_OF_RANGE' };
@@ -238,11 +256,26 @@ function factFiles(kbDir) {
 const rel = (kbDir, file) => path.relative(kbDir, file).split(path.sep).join('/');
 
 export function validateKb(kbDir) {
-  loadManifest(kbDir);
+  const manifest = loadManifest(kbDir);
   const errors = [];
+  if (isInRepo(manifest)) {
+    const kbRoot = gitRoot(kbDir);
+    for (const r of manifest.repos) {
+      let dir;
+      try {
+        dir = resolveRepo(kbDir, r.name);
+      } catch {
+        continue; // a missing repo is reported by stale, not here
+      }
+      if (gitRoot(dir) !== kbRoot) errors.push({ file: 'manifest.json', lineNo: null, raw: r.name, problem: 'IN_REPO_SPLIT' });
+    }
+  }
+  for (const doc of manifest.teamDocs ?? []) {
+    if (!fs.existsSync(path.join(kbDir, ...doc.split('/')))) errors.push({ file: doc, lineNo: null, raw: doc, problem: 'TEAM_DOC_MISSING' });
+  }
   for (const file of factFiles(kbDir)) {
     for (const c of parseCitations(fs.readFileSync(file, 'utf8'))) {
-      const r = checkCitation(kbDir, c);
+      const r = checkCitation(kbDir, c, manifest);
       if (!r.ok) errors.push({ file: rel(kbDir, file), lineNo: c.lineNo, raw: c.raw, problem: r.problem });
     }
   }
