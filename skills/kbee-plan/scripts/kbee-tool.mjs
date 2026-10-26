@@ -124,6 +124,7 @@ export function findKb(startDir) {
   const root = gitRoot(start);
   if (!root) return null;
   const rootDir = path.resolve(root);
+  if (isKb(path.join(rootDir, 'kb'))) return path.join(rootDir, 'kb');
   for (const f of ['AGENTS.md', 'CLAUDE.md']) {
     const file = path.join(rootDir, f);
     if (!fs.existsSync(file)) continue;
@@ -169,6 +170,30 @@ function listsRepo(kbDir, rootDir) {
   } catch {
     return false;
   }
+}
+
+// Folders that look like a hand-written knowledge base (no kbee manifest): candidates for kbee-audit.
+const FOREIGN_KB_DIRS = ['kb', 'docs/kb', 'knowledge', 'knowledge-base', 'docs/knowledge', 'wiki', 'docs/wiki', 'docs/architecture'];
+
+function countMarkdown(dir, limit) {
+  let n = 0;
+  const walk = (p) => {
+    for (const e of fs.readdirSync(p, { withFileTypes: true })) {
+      if (n >= limit) return;
+      if (e.isDirectory()) walk(path.join(p, e.name));
+      else if (e.name.endsWith('.md')) n++;
+    }
+  };
+  walk(dir);
+  return n;
+}
+
+export function findForeignKbs(startDir) {
+  const root = gitRoot(path.resolve(startDir));
+  if (!root) return [];
+  return FOREIGN_KB_DIRS.map((d) => path.join(path.resolve(root), ...d.split('/')))
+    .filter((p) => fs.existsSync(p) && fs.statSync(p).isDirectory() && !isKb(p) && countMarkdown(p, 2) >= 2)
+    .sort();
 }
 
 // Sibling KBs of the current git repo, for asking the user when findKb can't decide.
@@ -398,7 +423,7 @@ const COMMANDS = {
   'set-rules': ([kbDir, version]) => setRulesVersion(kbDir, version),
   stale: ([kbDir, ...flags]) => staleness(kbDir, { fetch: !flags.includes('--no-fetch') }),
   'set-synced': ([kbDir, name, sha]) => setSynced(kbDir, name, sha),
-  find: ([dir = process.cwd()]) => ({ kbDir: findKb(dir), candidates: findKbCandidates(dir) }),
+  find: ([dir = process.cwd()]) => ({ kbDir: findKb(dir), candidates: findKbCandidates(dir), foreign: findForeignKbs(dir) }),
   resolve: ([kbDir, name]) => ({ path: resolveRepo(kbDir, name) }),
   validate: ([kbDir]) => {
     const result = validateKb(kbDir);

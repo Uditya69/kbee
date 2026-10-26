@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { parseCitations, validateKb, showCitation, KbeeError } from '../shared/scripts/kbee-tool.mjs';
+import { parseCitations, validateKb, showCitation, findKb, findForeignKbs, KbeeError } from '../shared/scripts/kbee-tool.mjs';
 import { makeMonorepo, makeWorkspace, gitT, tempDir, writeJson } from './helpers/fixture-repos.mjs';
 
 const problems = (kbDir) => validateKb(kbDir).errors.map((e) => e.problem);
@@ -62,4 +62,26 @@ test('team docs must exist, and location must be known', async () => {
 test('show reads commit-less citations from the working tree', async () => {
   const { kbDir } = await makeMonorepo();
   assert.match(showCitation(kbDir, 'shop-api:apps/api/src/orders.ts:1'), /^> 1 \|/m);
+});
+
+test('finds kb/ from inside a package', async () => {
+  const { root, kbDir } = await makeMonorepo();
+  assert.equal(findKb(path.join(root, 'apps/api/src')), kbDir);
+  assert.deepEqual(findForeignKbs(root), []);
+});
+
+test('reports a hand-written kb/ as foreign, not as a KB', async () => {
+  const { root } = await makeMonorepo({ withKb: false });
+  fs.mkdirSync(path.join(root, 'kb/be'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'kb/README.md'), '# Our KB\n');
+  fs.writeFileSync(path.join(root, 'kb/be/orders.md'), '# Orders\n');
+  assert.equal(findKb(path.join(root, 'apps/api')), null);
+  assert.deepEqual(findForeignKbs(path.join(root, 'apps/api')), [path.join(root, 'kb')]);
+});
+
+test('a folder with one Markdown file is not a foreign KB', async () => {
+  const { root } = await makeMonorepo({ withKb: false });
+  fs.mkdirSync(path.join(root, 'docs/architecture'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'docs/architecture/overview.md'), '# Overview\n');
+  assert.deepEqual(findForeignKbs(root), []);
 });
