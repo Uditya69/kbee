@@ -33,8 +33,10 @@ for (const [name, phrases] of Object.entries(CONTRACTS)) {
 // Shared reference docs carry rules every skill depends on.
 const SHARED = path.resolve(SKILLS, '../shared/references');
 const SHARED_CONTRACTS = {
-  'accuracy-rules.md': ['Cross-check contracts', 'rules <kb>', 'relative to the git root', '--no-renames'],
-  'kb-layout.md': ['"source"', 'field-level', 'rulesVersion', 'Data flow and domain model', 'Common changes', 'shared-logic.md'],
+  'accuracy-rules.md': ['Cross-check contracts', 'rules <kb>', 'relative to the git root', '--no-renames', '[repo:path:line]', 'NEEDS_SHA', 'roots <kb>', 'git log -1'],
+  'kb-layout.md': ['"source"', 'field-level', 'rulesVersion', 'Data flow and domain model', 'Common changes', 'shared-logic.md', '"location"', 'in-repo', 'teamDocs', 'shipped', 'one branch per git repo'],
+  'kb-discovery.md': ['<git root>/kb', 'kbee-audit', 'foreign'],
+  'approval-rules.md': ['pre-push summary', 'in-repo'],
 };
 
 for (const [file, phrases] of Object.entries(SHARED_CONTRACTS)) {

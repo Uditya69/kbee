@@ -4,7 +4,8 @@
 Search in this order, and stop at the first folder whose `manifest.json` is valid (it has `"kbeeVersion": 1` and a `repos` list):
 
 1. The current folder and each of its parent folders.
-2. A **pointer block** in `AGENTS.md` or `CLAUDE.md` at the root of the current git repo. Its path is relative to that repo root:
+2. **`<git root>/kb`**: an in-repo KB in a folder named `kb` at the root of the current git repo, even when you're deep inside a package.
+3. A **pointer block** in `AGENTS.md` or `CLAUDE.md` at the root of the current git repo. Its path is relative to that repo root:
 
    ```
    <!-- kbee:start -->
@@ -12,13 +13,13 @@ Search in this order, and stop at the first folder whose `manifest.json` is vali
    <!-- kbee:end -->
    ```
 
-3. Folders next to the current git repo's root (siblings), for example `../shop-kb`.
+4. Folders next to the current git repo's root (siblings), for example `../shop-kb`.
 
-`node <skill-dir>/scripts/kbee-tool.mjs find` does all three steps.
+`node <skill-dir>/scripts/kbee-tool.mjs find` does all four steps. Its `foreign` list holds folders that look like a hand-written KB without a kbee manifest (`kb/`, `docs/kb/`, `knowledge/`, `wiki/`, `docs/architecture/` and similar, with at least two Markdown files).
 
 If the user names a KB path or URL, use that instead.
 
-If no KB is found, say so and offer to run **kbee-init**. Never invent a KB, and never write KB files outside a real KB folder.
+If no KB is found but there's a **foreign** KB (from `find`, or one you spot yourself), say so in one line and offer **kbee-audit**, which adopts it. Otherwise say there's no KB and offer **kbee-init**. Never invent a KB, and never write KB files outside a real KB folder.
 
 ## Pointer block
 

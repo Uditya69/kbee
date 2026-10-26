@@ -1,9 +1,12 @@
 # KB layout
 
-The KB is its own git repo, separate from the code repos. It holds plain Markdown that people can read, plus `manifest.json`.
+The KB holds plain Markdown that people can read, plus `manifest.json`. It lives in one of two places, recorded as `"location"` in `manifest.json`:
+
+- **`"separate"`** (the default when `location` is missing): its own git repo, for example `../shop-kb`, next to the code repos. Use it for several separate repos.
+- **`"in-repo"`**: a folder inside the code repo, `kb/` at the git root by default. Use it for a single repo or a monorepo. Every manifest entry must live in that same git repo. See [In-repo KBs](#in-repo-kbs).
 
 ```
-<name>-kb/
+<name>-kb/   (or <repo>/kb/)
   README.md              # what this KB is and the rules (from templates/kb/README.md)
   manifest.json          # repos and the commit each was synced at
   system-map.md          # all repos, what each owns, how they connect (Mermaid diagram)
@@ -51,7 +54,9 @@ Fact files are `system-map.md`, `repos/`, `contracts/`, and `decisions/`. They d
 - `name` matches `^[a-z0-9][a-z0-9._-]*$` and is used in citations. In a monorepo, each package or app gets its own entry, and `pathHint` points at the package folder.
 - `rulesVersion` is the kbee rules version this KB was built or last upgraded to (missing means 1). See `rules-changelog.md`. **kbee-sync** upgrade mode brings an older KB up to date.
 - `mode` is `"direct"` (commit KB changes to the default branch) or `"pr"` (KB changes go through PRs).
-- `pathHint` is relative to the KB folder.
+- `pathHint` is relative to the KB folder. In an in-repo KB at `kb/`, a package's `pathHint` looks like `../apps/api`, and a single repo's is `..`.
+- `location` is `"separate"` or `"in-repo"`. Missing means `"separate"`.
+- `teamDocs` (optional) lists the team's own docs that kbee looks after, as paths relative to the KB folder, for example `["use-cases/place-an-order.md"]`. **kbee-audit** fills it in when it keeps an existing KB alongside kbee's files. Team docs don't use kbee's citation syntax. kbee tracks the file paths they mention (in backticks or relative links), flags them as stale when those files change, and proposes fixes like any fact change. `validate` only checks that they exist.
 
 ## .kbee.local.json
 
@@ -99,4 +104,15 @@ A type name with a citation is not a shape.
 
 `source` records where the requirements came from: `type` is `jira`, `github`, `figma`, or `text`. It's empty for plain text.
 
-`stage` is one of `spec`, `plan`, `build`, `review`, `ship`, or `done`.
+`stage` is one of `spec`, `plan`, `build`, `review`, `ship`, `shipped`, or `done`. In-repo features stop at `shipped`: the records merge with the code, and a `shipped` feature whose branch has merged counts as done.
+
+`branches` and `prs` are keyed by manifest entry. Monorepo packages share **one branch per git repo** and one PR, so entries that live in the same git repo (see `kbee-tool.mjs roots`) have the same branch and PR URL.
+
+## In-repo KBs
+
+When `"location": "in-repo"`, the KB and the code share one git history, so:
+
+- **Citations name no commit:** `[repo:path:line]` or `[repo:path:start-end]`, with `path` relative to the git root. It means "the code in this same commit". `syncedSha` stays `null` and `set-synced` isn't used.
+- **Freshness comes from history:** a KB file is stale when a file it cites changed in a commit after the KB file's own last commit.
+- **Feature work lives on the feature branch.** `kbee-spec` creates `kbee/<slug>` and commits `features/<slug>/` there. KB fact changes are written on that branch too, verified, and merge in the same PR as the code. There is no `pending.md` and nothing to do after merge.
+- To find in-flight features, list local and remote `kbee/*` branches and read `kb/features/<slug>/status.json` on each (`git show kbee/<slug>:kb/features/<slug>/status.json`).

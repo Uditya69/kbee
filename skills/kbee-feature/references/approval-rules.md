@@ -26,9 +26,13 @@ Any change to `system-map.md`, `repos/`, `contracts/`, or `decisions/`:
 
 The first KB from `kbee-init` gets **one** approval: show one summary of what you understood and what you weren't sure of, and write the KB as a whole after a yes. Don't ask fact by fact.
 
+## In-repo KBs during a feature
+
+With an in-repo KB, a feature's KB fact changes are written on the feature branch and merge with the code. They still need a yes, but don't add a prompt for them: **kbee-ship** lists them in its **pre-push summary** (each change, with its verified text), and the user's yes to pushing covers them. A partial yes leaves out the changes they declined. Those go in `gaps.md` under **Declined**. The PR review is the team's second look.
+
 ## Git
 
-- Run `git pull --rebase` in the KB repo before every write.
+- Run `git pull --rebase` in the KB repo before every write. For an **in-repo** KB, the KB repo is the code repo: KB edits outside a feature (an answer that grows the KB, an audit fix, a sync) are committed on the current branch after the usual yes, and never mixed into an unrelated commit.
 - Commit KB changes with clear messages (`kb: update shop-api contracts`).
 - **Always ask before pushing**, in the KB repo and in code repos.
 - If there's a conflict, re-verify both sides against the code and keep what the code supports. If the code can't settle it, ask the user.
