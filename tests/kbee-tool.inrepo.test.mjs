@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { parseCitations, validateKb, showCitation, findKb, findForeignKbs, KbeeError } from '../shared/scripts/kbee-tool.mjs';
+import { parseCitations, validateKb, showCitation, findKb, findForeignKbs, mentionedPaths, staleness, gitRoots, resolveRepo, KbeeError } from '../shared/scripts/kbee-tool.mjs';
 import { makeMonorepo, makeWorkspace, gitT, tempDir, writeJson } from './helpers/fixture-repos.mjs';
 
 const problems = (kbDir) => validateKb(kbDir).errors.map((e) => e.problem);
@@ -84,4 +84,71 @@ test('a folder with one Markdown file is not a foreign KB', async () => {
   fs.mkdirSync(path.join(root, 'docs/architecture'), { recursive: true });
   fs.writeFileSync(path.join(root, 'docs/architecture/overview.md'), '# Overview\n');
   assert.deepEqual(findForeignKbs(root), []);
+});
+
+const byName = (list) => Object.fromEntries(list.map((r) => [r.name, r]));
+const commitAll = (root, msg) => {
+  gitT(root, ['add', '-A']);
+  gitT(root, ['commit', '-q', '-m', msg]);
+};
+
+test('mentionedPaths finds file and folder references in prose', () => {
+  assert.deepEqual(mentionedPaths('see `apps/api/src/orders.ts:42` and [x](../apps/web/src/) and `npm test`, [y](https://e.com/a.md), [z](#top)'), [
+    'apps/api/src/orders.ts',
+    '../apps/web/src',
+  ]);
+  assert.deepEqual(mentionedPaths('`./README.md#setup` and `README.md`'), ['README.md']);
+});
+
+test('an in-repo KB is fresh once committed', async () => {
+  const { kbDir } = await makeMonorepo();
+  for (const r of staleness(kbDir)) {
+    assert.equal(r.status, 'fresh', r.name);
+    assert.equal(r.syncedSha, null);
+    assert.equal(r.fetchFailed, false);
+  }
+});
+
+test('a later code commit makes the citing KB file stale', async () => {
+  const { root, kbDir } = await makeMonorepo();
+  fs.appendFileSync(path.join(root, 'apps/api/src/orders.ts'), 'export const later = 1;\n');
+  commitAll(root, 'change api');
+  const r = byName(staleness(kbDir));
+  assert.equal(r['shop-api'].status, 'stale');
+  assert.deepEqual(r['shop-api'].changedFiles, ['apps/api/src/orders.ts']);
+  assert.deepEqual(r['shop-api'].affectedKbFiles, ['contracts/orders-api.md']);
+  assert.equal(r['shop-web'].status, 'fresh');
+  assert.equal(r['shop-api'].currentSha, gitT(root, ['rev-parse', 'HEAD']));
+});
+
+test('a KB file being edited in the working tree is not flagged', async () => {
+  const { root, kbDir } = await makeMonorepo();
+  fs.appendFileSync(path.join(root, 'apps/api/src/orders.ts'), 'export const later = 1;\n');
+  commitAll(root, 'change api');
+  fs.appendFileSync(path.join(kbDir, 'contracts/orders-api.md'), '\nUpdated.\n');
+  assert.equal(byName(staleness(kbDir))['shop-api'].status, 'fresh');
+});
+
+test('in-repo team docs track the paths they mention', async () => {
+  const { root, kbDir } = await makeMonorepo();
+  fs.mkdirSync(path.join(kbDir, 'use-cases'));
+  fs.writeFileSync(path.join(kbDir, 'use-cases/orders.md'), 'Orders live in `apps/api/src/` and [the page](../../apps/web/src/api.ts).\n');
+  editManifest(kbDir, (m) => (m.teamDocs = ['use-cases/orders.md']));
+  commitAll(root, 'team doc');
+  assert.equal(byName(staleness(kbDir))['shop-api'].status, 'fresh');
+  fs.appendFileSync(path.join(root, 'apps/api/src/orders.ts'), 'export const later = 1;\n');
+  fs.appendFileSync(path.join(root, 'apps/web/src/api.ts'), 'export const later = 1;\n');
+  commitAll(root, 'change api and web');
+  const r = byName(staleness(kbDir));
+  assert.ok(r['shop-api'].affectedKbFiles.includes('use-cases/orders.md'));
+  assert.ok(r['shop-web'].affectedKbFiles.includes('use-cases/orders.md'));
+  assert.deepEqual(r['shop-web'].changedFiles, ['apps/web/src/api.ts']);
+});
+
+test('gitRoots groups monorepo entries, and resolve reports the git root', async () => {
+  const { root, kbDir } = await makeMonorepo();
+  assert.deepEqual(gitRoots(kbDir), [{ gitRoot: root, repos: ['shop-api', 'shop-web', 'shop-types'] }]);
+  const ws = await makeWorkspace();
+  assert.equal(gitRoots(ws.kbDir).length, 3);
+  assert.equal(resolveRepo(kbDir, 'shop-api'), path.join(root, 'apps/api'));
 });

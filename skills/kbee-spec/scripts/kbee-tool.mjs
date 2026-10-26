@@ -339,8 +339,104 @@ function citingFiles(kbDir, repo, changedFiles) {
     .map((file) => rel(kbDir, file));
 }
 
+// Paths a hand-written doc points at: backtick spans and relative Markdown link targets
+// that look like a path (contain a slash or a file extension). Line suffixes and anchors are dropped.
+export function mentionedPaths(text) {
+  const raw = [...text.matchAll(/`([^`\s]+)`/g)].map((m) => m[1]).concat([...text.matchAll(/\]\(([^)\s]+)\)/g)].map((m) => m[1]));
+  const out = [];
+  for (let p of raw) {
+    if (/^[a-z][a-z0-9+.-]*:/i.test(p) || p.startsWith('#')) continue;
+    p = p.replace(/#.*$/, '').replace(/:\d+(-\d+)?$/, '').replace(/^(\.\/)+/, '').replace(/\/+$/, '');
+    if (!p || !(p.includes('/') || /\.[a-z0-9]+$/i.test(p))) continue;
+    if (!out.includes(p)) out.push(p);
+  }
+  return out;
+}
+
+const covers = (ref, file) => file === ref || file.startsWith(ref + '/');
+const posix = (p) => p.split(path.sep).join('/');
+
+function teamDocFiles(kbDir, manifest) {
+  return (manifest.teamDocs ?? []).map((d) => path.join(kbDir, ...d.split('/'))).filter((f) => fs.existsSync(f));
+}
+
+// Team docs (separate-repo KB) whose mentioned paths cover a changed file of this repo.
+function citingTeamDocs(kbDir, manifest, changedFiles) {
+  const all = changedFiles.includes('*');
+  return teamDocFiles(kbDir, manifest)
+    .filter((f) => all || mentionedPaths(fs.readFileSync(f, 'utf8')).some((ref) => changedFiles.some((c) => covers(ref, c))))
+    .map((f) => rel(kbDir, f));
+}
+
+// In-repo KB: the KB and code share history. A KB file is stale when a file it cites
+// (or, for team docs, a path it mentions) changed in a commit after the KB file's last commit.
+// A KB file with uncommitted edits is being updated, so it isn't flagged.
+function inRepoStaleness(kbDir, manifest) {
+  const root = path.resolve(gitRoot(kbDir) ?? kbDir);
+  const head = revParse(root, 'HEAD');
+  const entries = manifest.repos.map((r) => {
+    let dir = null;
+    try {
+      dir = resolveRepo(kbDir, r.name);
+    } catch (e) {
+      if (!(e instanceof KbeeError && e.code === 'REPO_NOT_FOUND')) throw e;
+    }
+    const prefix = dir ? posix(path.relative(root, dir)) : null;
+    return { r, dir, prefix, changed: new Set(), affected: new Set() };
+  });
+  const byName = Object.fromEntries(entries.map((e) => [e.r.name, e]));
+  const ownerOf = (file) => {
+    const found = entries.filter((e) => e.prefix !== null && (e.prefix === '' || covers(e.prefix, file))).sort((a, b) => b.prefix.length - a.prefix.length);
+    return found[0] ?? entries[0];
+  };
+  const dirty = new Set(
+    gitRaw(root, ['status', '--porcelain', '--untracked-files=all', '-z']) // untrimmed: the first entry's status starts with a space
+      .split('\0')
+      .filter(Boolean)
+      .map((l) => l.slice(3)),
+  );
+  const teamDocs = new Set(teamDocFiles(kbDir, manifest));
+  for (const file of [...factFiles(kbDir), ...teamDocs]) {
+    const relRoot = posix(path.relative(root, file));
+    if (dirty.has(relRoot) || !head) continue;
+    const base = git(root, ['log', '-1', '--format=%H', '--', relRoot]);
+    if (!base) continue;
+    const text = fs.readFileSync(file, 'utf8');
+    const refs = []; // { path relative to root, owner entry or null (owner of the changed file) }
+    if (teamDocs.has(file)) {
+      for (const m of mentionedPaths(text)) {
+        const candidates = [m, posix(path.relative(root, path.resolve(path.dirname(file), m)))];
+        const hit = candidates.find((c) => !c.startsWith('..') && fs.existsSync(path.join(root, c)));
+        if (hit) refs.push({ path: hit, owner: null });
+      }
+    } else {
+      for (const c of parseCitations(text)) if (c.kind === 'code' && byName[c.repo]) refs.push({ path: c.path, owner: byName[c.repo] });
+    }
+    if (!refs.length) continue;
+    const changed = git(root, ['diff', '--name-only', '--no-renames', base, head, '--', ...new Set(refs.map((x) => x.path))]).split('\n').filter(Boolean);
+    for (const c of changed) {
+      for (const ref of refs.filter((x) => covers(x.path, c))) {
+        const e = ref.owner ?? ownerOf(c);
+        e.changed.add(c);
+        e.affected.add(rel(kbDir, file));
+      }
+    }
+  }
+  return entries.map(({ r, dir, changed, affected }) => ({
+    name: r.name,
+    syncedSha: null,
+    currentSha: dir ? head : null,
+    status: !dir ? 'missing' : affected.size ? 'stale' : 'fresh',
+    fetchFailed: false,
+    changedFiles: [...changed].sort(),
+    affectedKbFiles: [...affected].sort(),
+  }));
+}
+
 export function staleness(kbDir, { fetch = true } = {}) {
-  return loadManifest(kbDir).repos.map((r) => {
+  const manifest = loadManifest(kbDir);
+  if (isInRepo(manifest)) return inRepoStaleness(kbDir, manifest);
+  return manifest.repos.map((r) => {
     const status = { name: r.name, syncedSha: r.syncedSha, currentSha: null, status: 'unknown', fetchFailed: false, changedFiles: [], affectedKbFiles: [] };
     let dir;
     try {
@@ -364,9 +460,27 @@ export function staleness(kbDir, { fetch = true } = {}) {
       status.changedFiles = git(dir, ['diff', '--name-only', '--no-renames', synced, status.currentSha]).split('\n').filter(Boolean);
     }
     status.status = synced === status.currentSha ? 'fresh' : 'stale';
-    status.affectedKbFiles = status.status === 'stale' ? citingFiles(kbDir, r.name, status.changedFiles) : [];
+    status.affectedKbFiles = status.status === 'stale' ? [...citingFiles(kbDir, r.name, status.changedFiles), ...citingTeamDocs(kbDir, manifest, status.changedFiles)] : [];
     return status;
   });
+}
+
+// Manifest entries grouped by the git repo they live in: monorepo packages share one branch and one PR.
+export function gitRoots(kbDir) {
+  const groups = [];
+  for (const r of loadManifest(kbDir).repos) {
+    let root = null;
+    try {
+      const dir = resolveRepo(kbDir, r.name);
+      root = path.resolve(gitRoot(dir) ?? dir);
+    } catch (e) {
+      if (!(e instanceof KbeeError && e.code === 'REPO_NOT_FOUND')) throw e;
+    }
+    const g = groups.find((x) => x.gitRoot === root);
+    if (g) g.repos.push(r.name);
+    else groups.push({ gitRoot: root, repos: [r.name] });
+  }
+  return groups;
 }
 
 export function setSynced(kbDir, name, sha) {
@@ -424,7 +538,11 @@ const COMMANDS = {
   stale: ([kbDir, ...flags]) => staleness(kbDir, { fetch: !flags.includes('--no-fetch') }),
   'set-synced': ([kbDir, name, sha]) => setSynced(kbDir, name, sha),
   find: ([dir = process.cwd()]) => ({ kbDir: findKb(dir), candidates: findKbCandidates(dir), foreign: findForeignKbs(dir) }),
-  resolve: ([kbDir, name]) => ({ path: resolveRepo(kbDir, name) }),
+  resolve: ([kbDir, name]) => {
+    const dir = resolveRepo(kbDir, name);
+    return { path: dir, gitRoot: gitRoot(dir) };
+  },
+  roots: ([kbDir]) => gitRoots(kbDir),
   validate: ([kbDir]) => {
     const result = validateKb(kbDir);
     if (result.errors.length) process.exitCode = 1;

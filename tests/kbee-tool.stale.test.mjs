@@ -135,3 +135,15 @@ test('setSynced refuses to move syncedSha backwards', async () => {
   assert.throws(() => setSynced(ws.kbDir, 'shop-api', old), (e) => e.code === 'SHA_NOT_DESCENDANT');
   assert.equal(loadManifest(ws.kbDir).repos.find((r) => r.name === 'shop-api').syncedSha, next);
 });
+
+test('separate KB: a team doc is flagged when a file it mentions changes', async () => {
+  const ws = await makeWorkspace();
+  fs.mkdirSync(path.join(ws.kbDir, 'flows'));
+  fs.writeFileSync(path.join(ws.kbDir, 'flows/checkout.md'), 'Orders are created in `src/orders.ts`.\n');
+  const m = loadManifest(ws.kbDir);
+  m.teamDocs = ['flows/checkout.md'];
+  writeJson(path.join(ws.kbDir, 'manifest.json'), m);
+  pushUpstream(ws, 'shop-api', (d) => fs.appendFileSync(path.join(d, 'src/orders.ts'), 'export const d = 4;\n'));
+  const r = byName(staleness(ws.kbDir));
+  assert.ok(r['shop-api'].affectedKbFiles.includes('flows/checkout.md'));
+});
