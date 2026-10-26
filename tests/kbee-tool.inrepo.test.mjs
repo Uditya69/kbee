@@ -152,3 +152,10 @@ test('gitRoots groups monorepo entries, and resolve reports the git root', async
   assert.equal(gitRoots(ws.kbDir).length, 3);
   assert.equal(resolveRepo(kbDir, 'shop-api'), path.join(root, 'apps/api'));
 });
+
+test('the legacy KB example is found as a foreign KB in the monorepo', async () => {
+  const { root } = await makeMonorepo({ withKb: false });
+  fs.cpSync(new URL('../examples/fixtures/shop-legacy-kb', import.meta.url), path.join(root, 'kb'), { recursive: true });
+  assert.equal(findKb(root), null);
+  assert.deepEqual(findForeignKbs(root), [path.join(root, 'kb')]);
+});

@@ -1,6 +1,6 @@
 # Knowledge base format
 
-A kbee KB is a git repo of Markdown plus one JSON file. You can read it on GitHub and edit it by hand. A full example is in [examples/expected-kb](../examples/expected-kb).
+A kbee KB is a folder of Markdown plus one JSON file, either its own git repo or `kb/` inside the code repo (see [In-repo KBs](#in-repo-kbs)). You can read it on GitHub and edit it by hand. A full example is in [examples/expected-kb](../examples/expected-kb).
 
 ```
 shop-kb/
@@ -42,6 +42,8 @@ node <skill-dir>/scripts/kbee-tool.mjs validate shop-kb
 ```
 
 It reports missing commits, missing files, out-of-range lines, and anything shaped like a citation that breaks the format.
+
+In an **in-repo KB**, code citations drop the commit: `[repo:path:line]` or `[repo:path:start-end]`, for example `[shop-api:apps/api/src/orders.ts:7-11]`. The KB and the code share history, so a citation means "the code in this same commit". A citation without a commit in a separate KB is reported as `NEEDS_SHA`.
 
 ## manifest.json
 
@@ -99,3 +101,11 @@ This file is personal and git-ignored. It overrides `pathHint` when your folders
 ## Editing by hand
 
 Hand edits are fine. Follow the same rules the agents follow (they're in the KB's own `README.md`): cite every fact, describe the default branch only, and run `validate` before you commit.
+
+## In-repo KBs
+
+Set `"location": "in-repo"` in `manifest.json`, with the KB in `kb/` at the git root. Every entry must live in that git repo (`validate` reports `IN_REPO_SPLIT` otherwise). `pathHint` is relative to `kb/`, for example `../apps/api`. `syncedSha` stays `null`: a page is stale when a file it cites changed in a commit after the page's own last commit.
+
+## Team docs
+
+`"teamDocs"` in `manifest.json` lists your own docs that kbee looks after, relative to the KB folder, for example `["use-cases/place-an-order.md"]`. `/kbee audit` adds them when you keep an existing KB alongside kbee's files. They don't need kbee citations. kbee watches the file paths they mention in backticks or relative links, flags them when those files change, and proposes fixes for your yes.

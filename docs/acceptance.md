@@ -33,6 +33,30 @@ Open the agent in `$WS`.
 | 8c | `/kbee build <real ticket>` with Jira connected. | The spec uses the ticket's acceptance criteria and cites `[source: <ticket url>]`. Before the PRs, it asks once about pushing and about posting to the ticket. The ticket status is unchanged. |
 | 9 | Run with Node unavailable (for example `PATH` without node). | Steps 1 and 6 still work through the manual git fallbacks. |
 
+### Monorepo and audit
+
+Build a monorepo from the same fixtures, with the hand-written KB from `examples/fixtures/shop-legacy-kb` at its root:
+
+```bash
+MONO=$(mktemp -d)/shop
+mkdir -p "$MONO/apps" "$MONO/packages"
+cp -R examples/fixtures/shop-api "$MONO/apps/api"
+cp -R examples/fixtures/shop-web "$MONO/apps/web"
+cp -R examples/fixtures/shop-types "$MONO/packages/types"
+cp -R examples/fixtures/shop-legacy-kb "$MONO/kb"
+git -C "$MONO" init -q -b main && git -C "$MONO" add -A && git -C "$MONO" commit -qm initial
+```
+
+Open the agent in `$MONO`. For 10d, build a second copy without the `kb` line.
+
+| # | Do | Pass when |
+|---|----|-----------|
+| 10a | `/kbee audit` | It finds `kb/` without being told where. One report flags "orders are stored in Postgres" as wrong (orders are in memory, cited) and `apps/api/src/db/orders.sql` as missing, then asks once: rewrite, or keep and add alongside. Nothing is written before the yes. |
+| 10b | Answer **keep**. | `git diff --stat` shows the four original files unchanged, except an approved link to `system-map.md` and any approved fixes. `kb/manifest.json` has `"location": "in-repo"` and lists the team docs in `teamDocs`. `validate` is clean. |
+| 10c | Reset, run 10a again, and answer **rewrite**. | `kb/` follows kbee's layout. The walkthrough survives under `kb/flows/`, linked from `system-map.md`. `validate` is clean. |
+| 10d | `/kbee init` in the monorepo without `kb/`. | It treats `apps/api`, `apps/web`, `packages/types` as entries, **asks** where the KB goes, and suggests `kb/` inside the repo. Citations have no commit. |
+| 10e | After 10b, `/kbee build "add order cancellation"`. | The spec stage creates `kbee/order-cancellation` and commits the feature records there. The plan orders packages types → api → web. Build makes **one** branch, and ship proposes **one** PR. The pre-push summary lists the KB changes, and the PR contains them. No `pending.md`. |
+
 ## Results
 
 | Date | Agent and version | Steps passed | Notes |
