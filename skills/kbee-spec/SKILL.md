@@ -38,6 +38,7 @@ Ask questions only where the requirements are ambiguous and a wrong guess would 
 
 ## 3. Create the feature folder
 
+- **In-repo KB** (`"location": "in-repo"`): the feature's records live on its branch from the start. First check the working tree is clean. If it's **dirty**, stop and ask, and never discard the user's changes. Then create the branch `kbee/<slug>` from the updated default branch, and write `features/<slug>/` on it. Record it in `status.json.branches` for every entry. **kbee-implement** reuses this branch.
 - **slug:** kebab-case from the title, at most 40 characters. If `features/<slug>/` already exists for a different feature, add `-2`, `-3`, and so on.
 - Write `features/<slug>/status.json` with `stage: "spec"` and `approved: { "spec": false, "plan": false }`, following the schema in `references/kb-layout.md`.
 
@@ -67,4 +68,4 @@ Show the user the spec in short form: the acceptance criteria, the affected repo
 - When running inside **kbee-feature**, stop here. kbee-feature asks for approval.
 - When running alone, ask whether the spec is approved. On a yes, set `status.json.approved.spec` to `true`.
 
-Then run **kbee-sync** feature mode, and commit the KB (`kb: spec <slug>`).
+Then run **kbee-sync** feature mode, and commit the KB (`kb: spec <slug>`). For an in-repo KB, that commit goes on `kbee/<slug>`.

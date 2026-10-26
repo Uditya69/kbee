@@ -17,16 +17,16 @@ Stage 3 of 6. Read [references/kb-layout.md](references/kb-layout.md) and [refer
 
 ## 2. Prepare each repo
 
-For each repo in the plan:
+Group the plan's repos by git repo with `node <skill-dir>/scripts/kbee-tool.mjs roots <kb>`. Monorepo packages share **one branch per git repo**. For each git repo:
 
-1. Find it: `node <skill-dir>/scripts/kbee-tool.mjs resolve <kb> <repo>`. Without Node, use `.kbee.local.json` or `pathHint`.
+1. Find it: `node <skill-dir>/scripts/kbee-tool.mjs resolve <kb> <repo>` (its `gitRoot`). Without Node, use `.kbee.local.json` or `pathHint`, then `git rev-parse --show-toplevel`.
 2. Make sure the working tree is clean. If it isn't, stop and ask, and never discard the user's changes.
-3. Update the default branch (`git pull --ff-only`), then create the branch **`kbee/<slug>`**, or switch to it if it exists.
-4. Record the branch in `status.json.branches`.
+3. Update the default branch (`git pull --ff-only`), then create the branch **`kbee/<slug>`**, or switch to it if it exists. With an **in-repo** KB, `kbee-spec` already created it, so switch to it.
+4. Record the branch in `status.json.branches` for every entry in that git repo.
 
 ## 3. Build, one repo at a time
 
-Work **one repo at a time**, in the plan's order. For each task:
+Work **one repo at a time** (one package at a time in a monorepo), in the plan's order. For each task:
 
 1. Write the **failing test** the plan names.
 2. Run it with the repo's test command (from `repos/<repo>/overview.md`) and confirm it fails for the right reason.
@@ -42,4 +42,4 @@ If the plan turns out to be wrong (a missing step, or a consumer the plan didn't
 
 ## 4. Hand off
 
-Set `status.json.stage` to `build`, then hand off to **kbee-review**. Run **kbee-sync** feature mode so `pending.md` records what this build will change in the KB, then commit the KB (`kb: build <slug>`) so the feature's state is shared. Don't push anything. That's **kbee-ship**'s job.
+Set `status.json.stage` to `build`, then hand off to **kbee-review**. Run **kbee-sync** feature mode so the KB records what this build changes: `pending.md` for a separate KB, or verified fact changes on the feature branch for an **in-repo** KB. Then commit the KB (`kb: build <slug>`) so the feature's state is shared. Don't push anything. That's **kbee-ship**'s job.

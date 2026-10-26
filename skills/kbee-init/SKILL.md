@@ -5,7 +5,7 @@ description: Set up kbee - build a shared, cited knowledge base (KB) for one or 
 
 # kbee-init
 
-Builds the shared knowledge base (KB) that every other kbee skill reads. The KB is its own git repo with plain Markdown files, described in [references/kb-layout.md](references/kb-layout.md).
+Builds the shared knowledge base (KB) that every other kbee skill reads. The KB is plain Markdown, either in a folder inside the code repo or in its own git repo, described in [references/kb-layout.md](references/kb-layout.md).
 
 The rules in [references/accuracy-rules.md](references/accuracy-rules.md) and [references/approval-rules.md](references/approval-rules.md) apply to every step. Read them first.
 
@@ -13,20 +13,33 @@ The helper is `<skill-dir>/scripts/kbee-tool.mjs`, where `<skill-dir>` is the fo
 
 ## 1. New KB or existing KB?
 
-Ask the user one question: create a new KB, or join an **existing KB**?
+First run `node <skill-dir>/scripts/kbee-tool.mjs find`. If it lists a **foreign** KB (a hand-written knowledge base without a kbee manifest), or you see one yourself, say so and hand over to **kbee-audit**, which adopts it instead of building a second KB.
+
+Otherwise ask the user one question: create a new KB, or join an **existing KB**?
 
 - **Existing KB:** ask for its git URL or local path. Then go to [Joining an existing KB](#joining-an-existing-kb).
-- **New KB:** ask where to create it. The default is a folder `<name>-kb` next to the code repos (for example `../shop-kb`). Run `git init` there.
+- **New KB:** continue. You'll ask where it goes once you know the repos (step 2b).
 
 ## 2. Collect the repo links
 
 Ask for the **repo links**: git URLs or local paths, any number. One repo is fine.
 
-- For each URL that isn't already on disk, clone it next to the KB folder. Ask first if that folder already has unrelated content.
+- For each URL that isn't already on disk, clone it into the folder the user is working in, next to the other repos. Ask first if that folder already has unrelated content.
 - Name each repo after its folder, lowercased, matching `^[a-z0-9][a-z0-9._-]*$`.
 - Detect each repo's default branch: `git -C <repo> symbolic-ref --short refs/remotes/origin/HEAD`, falling back to `main`, then `master`. Read the KB facts from that branch. If the working copy is on another branch, read files with `git show <sha>:<path>` rather than checking out.
 - **Monorepos:** if a repo holds several packages or apps (workspaces, `packages/*`, `apps/*`), ask whether to treat each one as its own entry. Each entry's `pathHint` then points at the package folder.
 - **Limits:** v1 is built for up to about 10 repos of up to about 100k lines each. If the user goes past that, say so and offer to scope down to the key repos or packages.
+
+## 2b. Where the KB lives
+
+**Always ask**, with a default:
+
+- **One git repo** (a single repo or a monorepo): default **inside the repo**, in `kb/` at the git root, with `"location": "in-repo"` in the manifest. Say the alternative in one line: a **separate KB repo** next to the code.
+- **Several separate repos:** default a **separate KB repo**, `<name>-kb` next to the code repos (for example `../shop-kb`), run `git init` there. An in-repo KB isn't offered here, because one repo's PRs would carry the other repos' facts.
+
+If `kb/` already exists and isn't a kbee KB, hand over to **kbee-audit**.
+
+For an in-repo KB, use citations without a commit (`[repo:path:line]`, path from the git root), leave `syncedSha` as `null`, and skip `set-synced`. Freshness comes from git history (see `references/kb-layout.md`).
 
 ## 3. Scan each repo
 
@@ -57,7 +70,7 @@ On the strongest model available, turn the facts into the files in `references/k
 - `contracts/<topic>.md` for each thing that crosses a repo boundary, naming its producer and consumers, with **field-level shapes** as defined in `references/kb-layout.md`. Put mirrored code in `contracts/shared-logic.md`, with every copy cited and any drift noted
 - `decisions/NNNN-*.md` for decisions the code or docs actually state, cited with `[source: <doc>]`. Don't invent reasons. Create `decisions/` only if there's at least one
 - `features/.gitkeep`, always
-- `manifest.json` with each repo's `syncedSha` set to the SHA you read, and `rulesVersion` set to the current rules version. Get it from `node <skill-dir>/scripts/kbee-tool.mjs rules <kb>` (`currentRulesVersion`), then record it with `node <skill-dir>/scripts/kbee-tool.mjs set-rules <kb> <version>`
+- `manifest.json` with each repo's `syncedSha` set to the SHA you read (`null` for an in-repo KB, with `"location": "in-repo"`), and `rulesVersion` set to the current rules version. Get it from `node <skill-dir>/scripts/kbee-tool.mjs rules <kb>` (`currentRulesVersion`), then record it with `node <skill-dir>/scripts/kbee-tool.mjs set-rules <kb> <version>`
 
 **Summary-level means** no per-function detail. It does **not** mean leaving out the path data takes from source to screen, the fields of a contract, or the traps someone changing the system would hit. The test: could a developer add a field end to end across the repos from the KB, without rediscovering the code?
 
@@ -93,7 +106,7 @@ Ask for a single yes to keep the KB as a whole. Apply any corrections the user g
 
 ## 7. Commit, then ask before pushing
 
-Commit the KB (`kb: initial knowledge base`). Ask **before pushing**, and if there's a remote, ask which one.
+Commit the KB (`kb: initial knowledge base`). For an in-repo KB, the commit goes in the code repo on the current branch and contains only `kb/` (and `.gitignore` for `.kbee.local.json`). If that's the default branch and the manifest is in `"pr"` mode, put it on a branch `kbee/kb-init` instead. Ask **before pushing**, and if there's a remote, ask which one.
 
 ## 8. Offer the pointer
 

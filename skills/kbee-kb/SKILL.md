@@ -17,7 +17,7 @@ Work out which of the four intents the user means.
 
 Answer from the KB, and confirm against the code.
 
-- Find the answer in the KB files and follow their citations into the code (`node <skill-dir>/scripts/kbee-tool.mjs show <kb> "<citation>"`).
+- Find the answer in the KB files, including the team's own docs listed in `manifest.json` `teamDocs`, and follow their citations or file references into the code (`node <skill-dir>/scripts/kbee-tool.mjs show <kb> "<citation>"`).
 - Cite every claim in your answer, the same way the KB does.
 - If a cited section is stale, check the current code before answering, and say that you did.
 - If neither the KB nor the code answers it, say **"I don't know"**, add the question to `gaps.md`, and offer to research it (that's Expand).

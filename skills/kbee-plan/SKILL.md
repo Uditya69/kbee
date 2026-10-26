@@ -7,6 +7,8 @@ description: Break an approved kbee feature spec into tasks per repo, ordered so
 
 Stage 2 of 6. The output is `features/<slug>/plan.md`. Read [references/approval-rules.md](references/approval-rules.md) and [references/kb-layout.md](references/kb-layout.md).
 
+`<skill-dir>` below is the folder containing this SKILL.md. If Node is not available, use the manual fallbacks in `references/accuracy-rules.md`.
+
 ## 1. Check the spec is approved
 
 Read `features/<slug>/status.json`. If `approved.spec` isn't `true`, stop and ask the user to approve the spec first. When the user runs this skill on its own and explicitly says to go ahead, proceed and note that in `plan.md`.
@@ -39,6 +41,7 @@ Rules:
 - Every task names its **test**. Use the repo's own test framework and conventions.
 - Every change to a contract lists the consumers that need to change, matching the spec's **contracts** section. If you find a consumer the spec missed, add it to the plan and flag it to the user.
 - Keep tasks small: one reviewable change each.
+- **Monorepos:** each package is still its own section, in producer → consumer order, but packages in the same git repo share **one branch per git repo** and one PR (`node <skill-dir>/scripts/kbee-tool.mjs roots <kb>` groups them). Say so under `## Order`, and keep commits per task so the history reads in plan order.
 - **UI tasks with a design:** if `status.json.source` has **Figma** links, attach the relevant frame link to each UI task, along with the components and design tokens it uses. Reuse the repo's existing components wherever they match the design.
 
 ## 4. Hand off

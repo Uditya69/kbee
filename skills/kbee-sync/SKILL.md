@@ -24,9 +24,21 @@ This skill has two modes:
 3. `node <skill-dir>/scripts/kbee-tool.mjs rules <kb>` compares the KB's `rulesVersion` with this kbee's. If `outdated` is true, say so (for example "this KB was built with kbee rules v1; v2 adds data flow and field-level contracts") and offer upgrade mode. Without Node: a missing `rulesVersion` in `manifest.json` means v1, and the current version is the highest `## vN` in `references/rules-changelog.md`.
 4. Report what you found in a few lines. A `missing` repo isn't an error: offer to clone it, or to record its local path in `.kbee.local.json`.
 
+## In-repo KBs
+
+When `manifest.json` has `"location": "in-repo"`, the KB shares the code's git history, and docs merge with the code:
+
+- **Feature mode** writes the KB fact changes **on the feature branch** `kbee/<slug>`, next to the code, instead of `pending.md`. Draft each change, cite it without a commit (`[repo:path:line]`), run the verify pass and `validate` on the branch, and commit it there (`kb: <slug> facts`). The user approves these in **kbee-ship**'s pre-push summary, so don't add a prompt here.
+- There's **no merge mode** for in-repo KBs: the facts are already in the PR. After merge, the feature counts as done once its branch has merged and `status.json.stage` is `shipped`.
+- The **gap check** works the same: `stale` reads git history instead of `syncedSha`, and lists the KB files and team docs whose cited or mentioned files changed after their last commit. Re-verify those, propose fixes, write on a yes, and commit on the current branch. There's no `set-synced`.
+
+## Team docs
+
+`manifest.json` `teamDocs` lists the team's own docs that kbee looks after (see `references/kb-layout.md`). In every mode, treat them like fact files: when the gap check lists one in `affectedKbFiles`, reread the code it mentions, propose the fix as an edit in the doc's own style, and write it only on a yes. Don't add kbee citations to them.
+
 ## Feature mode
 
-The feature's code lives on branches that aren't merged yet, so **don't touch the fact files**.
+For a separate KB, the feature's code lives on branches that aren't merged yet, so **don't touch the fact files**. (In-repo KBs: see above.)
 
 1. Read `features/<slug>/status.json` and the diff of the feature's branches against each repo's default branch.
 2. Write `features/<slug>/pending.md`: each KB fact this feature will change once merged (a new route, a changed contract, a new convention), with the target KB file and the proposed text. Cite the branch commit (`[shop-api@<branch sha>:path:line]`).
