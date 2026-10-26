@@ -1,6 +1,6 @@
 # Working as a team
 
-The KB is an ordinary git repo, so a team shares it the same way it shares code.
+The KB lives in git, so a team shares it the same way it shares code. It's either its own repo (several code repos) or a `kb/` folder inside the code repo (one repo or a monorepo). With an in-repo KB there's nothing extra to share: whoever clones the code has the KB, and see [In-repo KBs](#in-repo-kbs) for how changes flow.
 
 ## Setting it up once
 
@@ -45,6 +45,15 @@ Everything about a feature lives in `features/<slug>/` in the KB:
 - the pending KB changes
 
 Each stage commits it. A teammate can pull the KB and say "resume order-cancellation" to pick it up.
+
+## In-repo KBs
+
+When the KB is `kb/` inside the code repo:
+
+- A feature's spec, plan and status live on its `kbee/<slug>` branch from the start. KB updates are committed on the same branch and **merge in the same PR as the code**. Reviewers see docs and code change together.
+- You approve those KB changes in the one "open the PRs?" question, where kbee lists them.
+- There's no sync to run after merge. Freshness comes from git history: a KB page is flagged when a file it cites changed after the page's last commit.
+- In a monorepo, a feature that touches several packages is **one branch and one PR**.
 
 ## Conflicts
 

@@ -18,7 +18,9 @@ The installer asks which agents to install for. To skip the question, name the a
 
 ## 2. Lay out your folders
 
-kbee works best when your repos and the KB sit side by side:
+**One repo or a monorepo?** Open your agent at its root. kbee asks where the KB should go and suggests `kb/` inside the repo. Its updates then ride along in your feature PRs. **Already have a KB or a docs folder** (any format)? Run `/kbee audit` instead of `/kbee init`: it checks what you have against the code and makes it work with kbee.
+
+**Several repos?** kbee works best when your repos and the KB sit side by side:
 
 ```
 ~/code/shop/
@@ -40,8 +42,8 @@ and give it your repo paths or links when it asks, for example `../shop-api ../s
 
 kbee will:
 
-1. **Ask:** new KB or join an existing one? Answer "new", and accept or change the location (`./shop-kb`).
-2. **Ask for your repo links:** git URLs or local paths. It works out each repo's default branch.
+1. **Ask:** new KB or join an existing one? Answer "new". If it finds a hand-written KB, it suggests `/kbee audit` instead.
+2. **Ask for your repo links:** git URLs or local paths. It works out each repo's default branch, then asks where the KB goes: `./shop-kb` for several repos, or `kb/` inside the repo for one repo or a monorepo.
 3. **Scan** each repo for its stack, entry points, routes, exported types, cross-repo calls, and conventions. On agents with subagents this happens in parallel.
 4. **Write and verify** the KB. Every fact gets a citation like `[shop-api@4b9f895:src/orders.ts:7-11]`, and every citation is reread before it stays.
 5. **Show you one summary**: the repos, how they connect, and what it wasn't sure about. Read it and correct anything wrong. One "yes" approves the whole KB.

@@ -1,0 +1,202 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { parseCitations, validateKb, showCitation, findKb, findForeignKbs, mentionedPaths, staleness, gitRoots, resolveRepo, KbeeError } from '../shared/scripts/kbee-tool.mjs';
+import { makeMonorepo, makeWorkspace, gitT, tempDir, writeJson } from './helpers/fixture-repos.mjs';
+
+const problems = (kbDir) => validateKb(kbDir).errors.map((e) => e.problem);
+const editManifest = (kbDir, fn) => {
+  const file = path.join(kbDir, 'manifest.json');
+  const m = JSON.parse(fs.readFileSync(file, 'utf8'));
+  fn(m);
+  writeJson(file, m);
+};
+
+test('parses commit-less citations', () => {
+  const [c] = parseCitations('see [shop-api:apps/api/src/orders.ts:3-5]');
+  assert.equal(c.kind, 'code');
+  assert.equal(c.repo, 'shop-api');
+  assert.equal(c.sha, null);
+  assert.equal(c.path, 'apps/api/src/orders.ts');
+  assert.equal(c.line, 3);
+  assert.equal(c.endLine, 5);
+  assert.equal(parseCitations('[source: user, 2026-10-26]')[0].kind, 'source');
+  assert.equal(parseCitations('[shop-api@abc1234:src/a.ts:1]')[0].sha, 'abc1234');
+});
+
+test('validates an in-repo KB against the working tree', async () => {
+  const { kbDir } = await makeMonorepo();
+  assert.deepEqual(validateKb(kbDir).errors, []);
+  const file = path.join(kbDir, 'contracts/orders-api.md');
+  fs.appendFileSync(file, 'Far [shop-api:apps/api/src/orders.ts:9999]\nGone [shop-web:apps/web/src/nope.ts:1]\n');
+  assert.deepEqual(problems(kbDir).sort(), ['FILE_NOT_FOUND', 'LINE_OUT_OF_RANGE']);
+});
+
+test('a commit-less citation in a separate KB is NEEDS_SHA', async () => {
+  const { kbDir } = await makeWorkspace();
+  fs.appendFileSync(path.join(kbDir, 'contracts/orders-api.md'), '\nX [shop-api:src/orders.ts:1]\n');
+  assert.deepEqual(problems(kbDir), ['NEEDS_SHA']);
+});
+
+test("in-repo entries must share the KB's git root", async () => {
+  const { ws, kbDir } = await makeMonorepo();
+  const other = path.join(ws, 'other');
+  fs.mkdirSync(other);
+  gitT(other, ['init', '-q', '-b', 'main']);
+  editManifest(kbDir, (m) => m.repos.push({ name: 'other', defaultBranch: 'main', pathHint: '../../other', syncedSha: null }));
+  const errors = validateKb(kbDir).errors;
+  assert.deepEqual(errors.map((e) => [e.file, e.problem, e.raw]), [['manifest.json', 'IN_REPO_SPLIT', 'other']]);
+});
+
+test('team docs must exist, and location must be known', async () => {
+  const { kbDir } = await makeMonorepo();
+  editManifest(kbDir, (m) => (m.teamDocs = ['use-cases/missing.md']));
+  assert.deepEqual(validateKb(kbDir).errors.map((e) => [e.file, e.problem]), [['use-cases/missing.md', 'TEAM_DOC_MISSING']]);
+  editManifest(kbDir, (m) => (m.location = 'cloud'));
+  assert.throws(() => validateKb(kbDir), (e) => e instanceof KbeeError && e.code === 'MANIFEST_INVALID');
+  editManifest(kbDir, (m) => ((m.location = 'in-repo'), (m.teamDocs = ['../escape.md'])));
+  assert.throws(() => validateKb(kbDir), (e) => e instanceof KbeeError && e.code === 'MANIFEST_INVALID');
+});
+
+test('show reads commit-less citations from the working tree', async () => {
+  const { kbDir } = await makeMonorepo();
+  assert.match(showCitation(kbDir, 'shop-api:apps/api/src/orders.ts:1'), /^> 1 \|/m);
+});
+
+test('finds kb/ from inside a package', async () => {
+  const { root, kbDir } = await makeMonorepo();
+  assert.equal(findKb(path.join(root, 'apps/api/src')), kbDir);
+  assert.deepEqual(findForeignKbs(root), []);
+});
+
+test('reports a hand-written kb/ as foreign, not as a KB', async () => {
+  const { root } = await makeMonorepo({ withKb: false });
+  fs.mkdirSync(path.join(root, 'kb/be'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'kb/README.md'), '# Our KB\n');
+  fs.writeFileSync(path.join(root, 'kb/be/orders.md'), '# Orders\n');
+  assert.equal(findKb(path.join(root, 'apps/api')), null);
+  assert.deepEqual(findForeignKbs(path.join(root, 'apps/api')), [path.join(root, 'kb')]);
+});
+
+test('a folder with one Markdown file is not a foreign KB', async () => {
+  const { root } = await makeMonorepo({ withKb: false });
+  fs.mkdirSync(path.join(root, 'docs/architecture'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'docs/architecture/overview.md'), '# Overview\n');
+  assert.deepEqual(findForeignKbs(root), []);
+});
+
+const byName = (list) => Object.fromEntries(list.map((r) => [r.name, r]));
+const commitAll = (root, msg) => {
+  gitT(root, ['add', '-A']);
+  gitT(root, ['commit', '-q', '-m', msg]);
+};
+
+test('mentionedPaths finds file and folder references in prose', () => {
+  assert.deepEqual(mentionedPaths('see `apps/api/src/orders.ts:42` and [x](../apps/web/src/) and `npm test`, [y](https://e.com/a.md), [z](#top)'), [
+    'apps/api/src/orders.ts',
+    '../apps/web/src',
+  ]);
+  assert.deepEqual(mentionedPaths('`./README.md#setup` and `README.md`'), ['README.md']);
+});
+
+test('an in-repo KB is fresh once committed', async () => {
+  const { kbDir } = await makeMonorepo();
+  for (const r of staleness(kbDir)) {
+    assert.equal(r.status, 'fresh', r.name);
+    assert.equal(r.syncedSha, null);
+    assert.equal(r.fetchFailed, false);
+  }
+});
+
+test('a later code commit makes the citing KB file stale', async () => {
+  const { root, kbDir } = await makeMonorepo();
+  fs.appendFileSync(path.join(root, 'apps/api/src/orders.ts'), 'export const later = 1;\n');
+  commitAll(root, 'change api');
+  const r = byName(staleness(kbDir));
+  assert.equal(r['shop-api'].status, 'stale');
+  assert.deepEqual(r['shop-api'].changedFiles, ['apps/api/src/orders.ts']);
+  assert.deepEqual(r['shop-api'].affectedKbFiles, ['contracts/orders-api.md']);
+  assert.equal(r['shop-web'].status, 'fresh');
+  assert.equal(r['shop-api'].currentSha, gitT(root, ['rev-parse', 'HEAD']));
+});
+
+test('a KB file being edited in the working tree is not flagged', async () => {
+  const { root, kbDir } = await makeMonorepo();
+  fs.appendFileSync(path.join(root, 'apps/api/src/orders.ts'), 'export const later = 1;\n');
+  commitAll(root, 'change api');
+  fs.appendFileSync(path.join(kbDir, 'contracts/orders-api.md'), '\nUpdated.\n');
+  assert.equal(byName(staleness(kbDir))['shop-api'].status, 'fresh');
+});
+
+test('in-repo team docs track the paths they mention', async () => {
+  const { root, kbDir } = await makeMonorepo();
+  fs.mkdirSync(path.join(kbDir, 'use-cases'));
+  fs.writeFileSync(path.join(kbDir, 'use-cases/orders.md'), 'Orders live in `apps/api/src/` and [the page](../../apps/web/src/api.ts).\n');
+  editManifest(kbDir, (m) => (m.teamDocs = ['use-cases/orders.md']));
+  commitAll(root, 'team doc');
+  assert.equal(byName(staleness(kbDir))['shop-api'].status, 'fresh');
+  fs.appendFileSync(path.join(root, 'apps/api/src/orders.ts'), 'export const later = 1;\n');
+  fs.appendFileSync(path.join(root, 'apps/web/src/api.ts'), 'export const later = 1;\n');
+  commitAll(root, 'change api and web');
+  const r = byName(staleness(kbDir));
+  assert.ok(r['shop-api'].affectedKbFiles.includes('use-cases/orders.md'));
+  assert.ok(r['shop-web'].affectedKbFiles.includes('use-cases/orders.md'));
+  assert.deepEqual(r['shop-web'].changedFiles, ['apps/web/src/api.ts']);
+});
+
+test('gitRoots groups monorepo entries, and resolve reports the git root', async () => {
+  const { root, kbDir } = await makeMonorepo();
+  assert.deepEqual(gitRoots(kbDir), [{ gitRoot: root, repos: ['shop-api', 'shop-web', 'shop-types'] }]);
+  const ws = await makeWorkspace();
+  assert.equal(gitRoots(ws.kbDir).length, 3);
+  assert.equal(resolveRepo(kbDir, 'shop-api'), path.join(root, 'apps/api'));
+});
+
+test('the legacy KB example is found as a foreign KB in the monorepo', async () => {
+  const { root } = await makeMonorepo({ withKb: false });
+  fs.cpSync(new URL('../examples/fixtures/shop-legacy-kb', import.meta.url), path.join(root, 'kb'), { recursive: true });
+  assert.equal(findKb(root), null);
+  assert.deepEqual(findForeignKbs(root), [path.join(root, 'kb')]);
+});
+
+test('a Markdown link whose text is a URL with a port is not a citation', async () => {
+  assert.deepEqual(parseCitations('[http://localhost:3000](http://localhost:3000) and [a:/x:1]'), []);
+  const { kbDir } = await makeWorkspace();
+  fs.appendFileSync(path.join(kbDir, 'contracts/orders-api.md'), '\nRun it at [http://localhost:3000](http://localhost:3000).\n');
+  assert.deepEqual(validateKb(kbDir).errors, []);
+});
+
+test('a KB adopted in a kbee/ subfolder or docs/kb is found, and not reported as foreign', async () => {
+  const { root, kbDir } = await makeMonorepo();
+  fs.mkdirSync(path.join(root, 'docs'));
+  fs.renameSync(kbDir, path.join(root, 'docs/kb'));
+  assert.equal(findKb(path.join(root, 'apps/api')), path.join(root, 'docs/kb'));
+  const team = path.join(root, 'kb');
+  fs.mkdirSync(path.join(team, 'contracts'), { recursive: true });
+  fs.writeFileSync(path.join(team, 'README.md'), '# Team KB\n');
+  fs.writeFileSync(path.join(team, 'contracts/orders.md'), '# Orders\n');
+  fs.renameSync(path.join(root, 'docs/kb'), path.join(team, 'kbee'));
+  assert.equal(findKb(root), path.join(team, 'kbee'));
+  assert.deepEqual(findForeignKbs(root), []);
+});
+
+test('in-repo team doc is flagged when a file it mentions is deleted', async () => {
+  const { root, kbDir } = await makeMonorepo();
+  fs.mkdirSync(path.join(kbDir, 'use-cases'));
+  fs.writeFileSync(path.join(kbDir, 'use-cases/orders.md'), 'Pages: `apps/web/src/OrderPage.tsx`.\n');
+  editManifest(kbDir, (m) => (m.teamDocs = ['use-cases/orders.md']));
+  commitAll(root, 'team doc');
+  fs.rmSync(path.join(root, 'apps/web/src/OrderPage.tsx'));
+  commitAll(root, 'delete page');
+  assert.ok(byName(staleness(kbDir))['shop-web'].affectedKbFiles.includes('use-cases/orders.md'));
+});
+
+test('in-repo staleness works through a symlinked path', async () => {
+  const { root, kbDir } = await makeMonorepo();
+  const link = path.join(tempDir('kbee-link-'), 'shop');
+  fs.symlinkSync(root, link);
+  fs.appendFileSync(path.join(root, 'apps/api/src/orders.ts'), 'export const later = 1;\n');
+  commitAll(root, 'change api');
+  assert.equal(byName(staleness(path.join(link, 'kb')))['shop-api'].status, 'stale');
+});

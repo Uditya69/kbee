@@ -17,7 +17,7 @@ Work out which of the four intents the user means.
 
 Answer from the KB, and confirm against the code.
 
-- Find the answer in the KB files and follow their citations into the code (`node <skill-dir>/scripts/kbee-tool.mjs show <kb> "<citation>"`).
+- Find the answer in the KB files, including the team's own docs listed in `manifest.json` `teamDocs`, and follow their citations or file references into the code (`node <skill-dir>/scripts/kbee-tool.mjs show <kb> "<citation>"`).
 - Cite every claim in your answer, the same way the KB does.
 - If a cited section is stale, check the current code before answering, and say that you did.
 - If neither the KB nor the code answers it, say **"I don't know"**, add the question to `gaps.md`, and offer to research it (that's Expand).
@@ -35,7 +35,7 @@ The user wants new knowledge, such as "document how payments work" or "map our e
 
 1. Get the repo's link or path. Clone it next to the KB if needed.
 2. Scan it the way **kbee-init** step 3 describes, for this one repo.
-3. Add it to manifest.json before verifying (`name`, `url`, `defaultBranch`, `pathHint`, and `syncedSha` set to the SHA you scanned). Otherwise `validate` reports every citation of the new repo as `REPO_UNKNOWN`. Manifest entries are bookkeeping. If the user declines the repo in the end, remove the entry.
+3. Add it to manifest.json before verifying (`name`, `url`, `defaultBranch`, `pathHint`, and `syncedSha` set to the SHA you scanned, or `null` in an in-repo KB). An in-repo KB only takes packages from its own git repo. For another repo, say so and suggest a separate KB. Otherwise `validate` reports every citation of the new repo as `REPO_UNKNOWN`. Manifest entries are bookkeeping. If the user declines the repo in the end, remove the entry.
 4. Draft `repos/<repo>/`. Then look for connections to the repos already listed, and draft changes to `system-map.md` and `contracts/`.
 5. Verify the drafts (verify pass, then `validate`), show everything, and write it on approval.
 6. Offer the pointer block (see `references/kb-discovery.md`).
@@ -50,4 +50,4 @@ The user says the KB is wrong.
 
 ## Finish
 
-Commit any approved KB changes (`kb: <what changed>`) and ask before pushing.
+Commit any approved KB changes (`kb: <what changed>`) as [references/approval-rules.md](references/approval-rules.md) describes (for an in-repo KB: the default branch, or a `kbee/kb-*` branch in `"pr"` mode), and ask before pushing.

@@ -9,7 +9,7 @@ Stage 4 of 6. The output is `features/<slug>/review.md`. Read [references/kb-lay
 
 ## 1. Read the KB first
 
-Read `spec.md`, `plan.md`, `status.json.branches`, and every contract the spec or the diff touches. Get each repo's diff with `git -C <repo> diff <default branch>...kbee/<slug>`.
+Read `spec.md`, `plan.md`, `status.json.branches`, and every contract the spec or the diff touches. Get each repo's diff with `git -C <repo> diff <default branch>...kbee/<slug>`. Monorepo packages share one branch per git repo: take that one diff, and review it package by package. With an in-repo KB the diff also holds the KB changes. Check they match the code.
 
 ## 2. Check correctness
 

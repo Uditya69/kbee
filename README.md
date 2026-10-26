@@ -20,7 +20,7 @@ Then there's **one command** to remember:
 
 kbee reads the ticket and any linked designs, writes a spec, plans the work across your repos, builds it test-first, reviews it against every repo that depends on the change, and opens linked PRs. **It asks you three things:** is the spec right, is the plan right, and can it open the PRs.
 
-The first time, it sets up the knowledge base for you (it asks for your repo links). Other things you can say: `/kbee ask "who calls POST /orders?"`, `/kbee sync`, or just `/kbee` to see where things stand.
+The first time, it sets up the knowledge base for you (it asks for your repo links). Other things you can say: `/kbee ask "who calls POST /orders?"`, `/kbee sync`, `/kbee audit` to adopt a knowledge base you already have (in any format), or just `/kbee` to see where things stand.
 
 📖 **New here? Read the [user guide](docs/README.md)**: [getting started](docs/getting-started.md), [Jira and Figma](docs/integrations.md), [skills](docs/skills.md), [teams](docs/teams.md), [KB format](docs/kb-format.md), [agents](docs/agents.md), and [troubleshooting](docs/troubleshooting.md).
 
@@ -32,7 +32,7 @@ kbee gives every agent session the same map: which repos exist, what each one ow
 
 ## The knowledge base
 
-The KB is **its own git repo** of plain Markdown, so your whole team shares it by pushing and pulling. See a complete example in [`examples/expected-kb`](examples/expected-kb).
+The KB is plain Markdown that your whole team shares through git. For a single repo or a monorepo it lives **inside the repo** in `kb/`, and its updates merge in the same PR as the code. For several repos it's **its own git repo** next to them. See a complete example in [`examples/expected-kb`](examples/expected-kb).
 
 ```
 shop-kb/

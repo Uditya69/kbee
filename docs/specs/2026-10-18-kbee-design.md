@@ -1,5 +1,7 @@
 # kbee — Design
 
+> Partly superseded by [2026-10-26-kbee-audit-and-in-repo-kb-design.md](2026-10-26-kbee-audit-and-in-repo-kb-design.md): KBs can now live inside the code repo, with their updates in the same PR as the code, and `/kbee audit` adopts existing KBs.
+
 
 ## Intent
 

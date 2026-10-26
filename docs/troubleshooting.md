@@ -34,7 +34,9 @@ If there are several KBs next to each other and none of them lists your repo, kb
 
 **Does it work with one repo?** Yes. You still get the KB, citations, freshness checks, and the full feature flow.
 
-**Monorepos?** During init, say yes to treating each package as its own entry. Citations use paths from the git root. A commit anywhere in the monorepo can mark every package as stale, but only the KB files that cite the changed files get flagged.
+**Monorepos?** During init, say yes to treating each package as its own entry, and keep the suggested `kb/` folder inside the repo. Citations use paths from the git root. Only the KB pages that cite a changed file get flagged as stale. A feature that touches several packages gets one branch and one PR, with its KB updates in that PR.
+
+**We already have a KB or a docs folder.** Run `/kbee audit`. It checks it against the code, shows one report, and asks whether to rewrite it into kbee's layout or keep your files and add kbee's files alongside. Keeping is the safe default: your files aren't moved or reworded, and kbee keeps them up to date from then on, with your yes.
 
 **How big can it get?** v1 is built for about 10 repos of up to about 100k lines each. Past that, `kbee-init` offers to focus on the key repos or packages.
 
