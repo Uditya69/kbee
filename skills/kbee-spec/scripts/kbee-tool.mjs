@@ -113,6 +113,9 @@ function gitRoot(dir) {
   }
 }
 
+// Where a KB lives inside a repo: kbee's default `kb`, or wherever kbee-audit adopted a team's KB.
+const KB_HOMES = ['kb', 'docs/kb', 'knowledge', 'knowledge-base', 'docs/knowledge', 'wiki', 'docs/wiki', 'docs/architecture'];
+
 const POINTER_RE = /<!-- kbee:start -->[\s\S]*?kbee-kb-path:\s*(\S+)[\s\S]*?<!-- kbee:end -->/;
 
 export function findKb(startDir) {
@@ -124,7 +127,11 @@ export function findKb(startDir) {
   const root = gitRoot(start);
   if (!root) return null;
   const rootDir = path.resolve(root);
-  if (isKb(path.join(rootDir, 'kb'))) return path.join(rootDir, 'kb');
+  for (const d of KB_HOMES) {
+    const dir = path.join(rootDir, ...d.split('/'));
+    if (isKb(dir)) return dir;
+    if (isKb(path.join(dir, 'kbee'))) return path.join(dir, 'kbee'); // adopted alongside a team KB that uses kbee's folder names
+  }
   for (const f of ['AGENTS.md', 'CLAUDE.md']) {
     const file = path.join(rootDir, f);
     if (!fs.existsSync(file)) continue;
@@ -172,8 +179,6 @@ function listsRepo(kbDir, rootDir) {
   }
 }
 
-// Folders that look like a hand-written knowledge base (no kbee manifest): candidates for kbee-audit.
-const FOREIGN_KB_DIRS = ['kb', 'docs/kb', 'knowledge', 'knowledge-base', 'docs/knowledge', 'wiki', 'docs/wiki', 'docs/architecture'];
 
 function countMarkdown(dir, limit) {
   let n = 0;
@@ -191,8 +196,9 @@ function countMarkdown(dir, limit) {
 export function findForeignKbs(startDir) {
   const root = gitRoot(path.resolve(startDir));
   if (!root) return [];
-  return FOREIGN_KB_DIRS.map((d) => path.join(path.resolve(root), ...d.split('/')))
-    .filter((p) => fs.existsSync(p) && fs.statSync(p).isDirectory() && !isKb(p) && countMarkdown(p, 2) >= 2)
+  // Folders that look like a hand-written knowledge base (no kbee manifest): candidates for kbee-audit.
+  return KB_HOMES.map((d) => path.join(path.resolve(root), ...d.split('/')))
+    .filter((p) => fs.existsSync(p) && fs.statSync(p).isDirectory() && !isKb(p) && !isKb(path.join(p, 'kbee')) && countMarkdown(p, 2) >= 2)
     .sort();
 }
 
@@ -203,9 +209,10 @@ export function findKbCandidates(startDir) {
 }
 
 // [repo@sha:path:line] or [repo@sha:path:start-end]; [source: ...];
-// in-repo KBs also use [repo:path:line], meaning the code in the same commit as the KB;
+// in-repo KBs also use [repo:path:line], meaning the code in the same commit as the KB
+// (not when it's a Markdown link's text, like [http://localhost:3000](...));
 // anything else shaped like [x@y] is a malformed citation, reported rather than skipped.
-const CITATION_RE = /\[([a-z0-9][a-z0-9._-]*)@([0-9a-f]{7,40}):([^\]:\s]+):(\d+)(?:-(\d+))?\]|\[source:\s*([^\]]+)\]|(\[[^\]\s]+@[^\]\s]+\])|\[([a-z0-9][a-z0-9._-]*):([^\]:\s@]+):(\d+)(?:-(\d+))?\]/g;
+const CITATION_RE = /\[([a-z0-9][a-z0-9._-]*)@([0-9a-f]{7,40}):([^\]:\s]+):(\d+)(?:-(\d+))?\]|\[source:\s*([^\]]+)\]|(\[[^\]\s]+@[^\]\s]+\])|\[([a-z0-9][a-z0-9._-]*):([^\]:\s@/][^\]:\s@]*):(\d+)(?:-(\d+))?\](?!\()/g;
 const GOOD_SOURCE_RE = /^(user, \d{4}-\d{2}-\d{2}|https?:\/\/\S+)$/;
 const FACT_PATHS = ['system-map.md', 'repos', 'contracts', 'decisions'];
 
@@ -371,7 +378,17 @@ function citingTeamDocs(kbDir, manifest, changedFiles) {
 // In-repo KB: the KB and code share history. A KB file is stale when a file it cites
 // (or, for team docs, a path it mentions) changed in a commit after the KB file's last commit.
 // A KB file with uncommitted edits is being updated, so it isn't flagged.
+function existsAt(root, sha, p) {
+  try {
+    git(root, ['cat-file', '-e', `${sha}:${p}`]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function inRepoStaleness(kbDir, manifest) {
+  kbDir = fs.realpathSync(kbDir); // git reports real paths; keep relative paths inside the repo
   const root = path.resolve(gitRoot(kbDir) ?? kbDir);
   const head = revParse(root, 'HEAD');
   const entries = manifest.repos.map((r) => {
@@ -406,7 +423,8 @@ function inRepoStaleness(kbDir, manifest) {
     if (teamDocs.has(file)) {
       for (const m of mentionedPaths(text)) {
         const candidates = [m, posix(path.relative(root, path.resolve(path.dirname(file), m)))];
-        const hit = candidates.find((c) => !c.startsWith('..') && fs.existsSync(path.join(root, c)));
+        // Exists now, or existed when the doc was last updated (a deleted file makes the doc stale).
+        const hit = candidates.find((c) => !c.startsWith('..') && (fs.existsSync(path.join(root, c)) || existsAt(root, base, c)));
         if (hit) refs.push({ path: hit, owner: null });
       }
     } else {

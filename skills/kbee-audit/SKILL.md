@@ -28,7 +28,7 @@ Also work out the code it describes: a single repo, a monorepo (workspaces, `app
 
 ## 2. Check it against the code
 
-Read the code at each repo's default-branch SHA. For the KB you found, work out:
+Read the code at each repo's default-branch SHA. For an in-repo KB, do this on the **default branch** (switch first; if the tree is dirty, stop and ask), so the fixes you commit sit next to the code they cite. For the KB you found, work out:
 
 - **Coverage:** which repos or packages, routes, tables, screens, events and cross-boundary contracts it covers, and which it misses.
 - **Accuracy:** claims that don't match the code. Spot-check widely, weighted toward what other code depends on (contracts, data models). **Verify every claim you report as wrong** by rereading the code. Never report a guess.
@@ -62,6 +62,7 @@ Only for a **foreign** KB, ask once: **rewrite** it into kbee's layout, or **kee
 ### Keep alongside (the default if the user doesn't want a rewrite)
 
 - Put kbee's files in the **same folder** as the team's KB (`kb/manifest.json`, `kb/system-map.md`, `kb/contracts/…`). If the team already uses one of kbee's names (`contracts/`, `decisions/`, `repos/`, `system-map.md`), put kbee's structure in a **`kbee/ subfolder`** of it instead, so the helper never treats the team's files as kbee facts.
+- If the team has a `README.md`, keep it and don't write kbee's template over it. Add a short kbee section to it instead (what kbee is and the editing rules from [templates/kb/README.md](templates/kb/README.md)), as one of the approved changes below.
 - The team's files stay **byte-for-byte** unchanged, except for:
   - one link from their index or README to `system-map.md`, shown and approved like a fact change;
   - fixes to their docs that the user approves (below).
@@ -84,7 +85,7 @@ Only for a **foreign** KB, ask once: **rewrite** it into kbee's layout, or **kee
 
 ## 6. Commit, then ask before pushing
 
-Commit (`kb: audit and adopt`). For an in-repo KB, commit on the current branch, and never mix it into an unrelated commit. Ask **before pushing**.
+Commit (`kb: audit and adopt`). For an in-repo KB, commit on the default branch in its own commit, or, in `"pr"` mode, on a branch `kbee/kb-audit` with a PR after asking (see `references/approval-rules.md`). Ask **before pushing**.
 
 Offer the pointer block ([templates/pointer-snippet.md](templates/pointer-snippet.md)) where a code repo doesn't point at the KB yet, only with permission.
 

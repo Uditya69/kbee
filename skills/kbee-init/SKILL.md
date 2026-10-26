@@ -39,7 +39,7 @@ Ask for the **repo links**: git URLs or local paths, any number. One repo is fin
 
 If `kb/` already exists and isn't a kbee KB, hand over to **kbee-audit**.
 
-For an in-repo KB, use citations without a commit (`[repo:path:line]`, path from the git root), leave `syncedSha` as `null`, and skip `set-synced`. Freshness comes from git history (see `references/kb-layout.md`).
+For an in-repo KB, work on the **default branch** (switch to it first; if the tree is dirty, stop and ask), so you read and commit the same code. Use citations without a commit (`[repo:path:line]`, path from the git root), leave `syncedSha` as `null`, and skip `set-synced`. Freshness comes from git history (see `references/kb-layout.md`).
 
 ## 3. Scan each repo
 
@@ -106,7 +106,7 @@ Ask for a single yes to keep the KB as a whole. Apply any corrections the user g
 
 ## 7. Commit, then ask before pushing
 
-Commit the KB (`kb: initial knowledge base`). For an in-repo KB, the commit goes in the code repo on the current branch and contains only `kb/` (and `.gitignore` for `.kbee.local.json`). If that's the default branch and the manifest is in `"pr"` mode, put it on a branch `kbee/kb-init` instead. Ask **before pushing**, and if there's a remote, ask which one.
+Commit the KB (`kb: initial knowledge base`). For an in-repo KB, the commit goes in the code repo on the default branch and contains only `kb/` (and `.gitignore` for `.kbee.local.json`). If that's the default branch and the manifest is in `"pr"` mode, put it on a branch `kbee/kb-init` instead. Ask **before pushing**, and if there's a remote, ask which one.
 
 ## 8. Offer the pointer
 

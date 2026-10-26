@@ -16,7 +16,7 @@ Read `status.json` (the stage should be `review`), `spec.md`, and `review.md`. I
 Show what will happen, then ask once for all repos. This is the **pre-push summary**:
 
 - each git repo, its branch `kbee/<slug>`, and its commit count. Monorepo packages share **one PR per git repo** (`roots` in the helper groups them), so list the packages under their repo
-- **in-repo KB:** the KB fact changes on the branch, each with its verified text. The yes to push covers them (see `references/approval-rules.md`). Leave out any the user declines, and log them in `gaps.md`
+- **in-repo KB:** the KB fact changes on the branch, each with its verified text. The yes to push covers them (see `references/approval-rules.md`). For any the user declines, undo them in a new commit on the branch before pushing (`kb: drop declined <slug> facts`), rerun `validate`, and log them in `gaps.md`
 - the PR title: `<Title>` (`[n/N]` when more than one repo)
 - the merge order from `plan.md` (producers first)
 - if the feature came from a ticket: "Also post the PR links to <ticket>?" (see 3b)

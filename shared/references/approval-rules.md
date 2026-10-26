@@ -27,11 +27,13 @@ The first KB from `kbee-init` gets **one** approval: show one summary of what yo
 
 ## In-repo KBs during a feature
 
-With an in-repo KB, a feature's KB fact changes are written on the feature branch and merge with the code. They still need a yes, but don't add a prompt for them: **kbee-ship** lists them in its **pre-push summary** (each change, with its verified text), and the user's yes to pushing covers them. A partial yes leaves out the changes they declined. Those go in `gaps.md` under **Declined**. The PR review is the team's second look.
+With an in-repo KB, a feature's KB fact changes are written on the feature branch and merge with the code. They still need a yes, but don't add a prompt for them: **kbee-ship** lists them in its **pre-push summary** (each change, with its verified text), and the user's yes to pushing covers them. A partial yes leaves out the changes they declined: before pushing, undo them in a new commit on the branch (`kb: drop declined <slug> facts`), rerun `validate`, and log them in `gaps.md` under **Declined**. The PR review is the team's second look.
 
 ## Git
 
-- Run `git pull --rebase` in the KB repo before every write. For an **in-repo** KB, the KB repo is the code repo: KB edits outside a feature (an answer that grows the KB, an audit fix, a sync) are committed on the current branch after the usual yes, and never mixed into an unrelated commit.
+- Run `git pull --rebase` in the KB repo before every write. For an **in-repo** KB, the KB repo is the code repo:
+  - on a feature branch `kbee/<slug>` that hasn't been pushed yet there's nothing to pull, so skip it;
+  - KB edits outside a feature (an answer that grows the KB, an audit fix, a sync) are committed on the default branch after the usual yes, in their own commit, never mixed into an unrelated commit. In `"pr"` mode they go on a branch `kbee/kb-<topic-or-date>` cut from it, with a PR after asking.
 - Commit KB changes with clear messages (`kb: update shop-api contracts`).
 - **Always ask before pushing**, in the KB repo and in code repos.
 - If there's a conflict, re-verify both sides against the code and keep what the code supports. If the code can't settle it, ask the user.

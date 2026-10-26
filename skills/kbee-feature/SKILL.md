@@ -28,7 +28,7 @@ Progress lives in `features/<slug>/status.json` ([references/kb-layout.md](refer
 
 ## 1. New feature, or resume?
 
-Check `features/*/status.json` for features whose `stage` isn't `done`. For an **in-repo** KB, feature records live on their branches: also list local and remote `kbee/*` branches and read each one's `kb/features/<slug>/status.json` with `git show`. Skip features whose stage is `shipped` and whose branch has merged.
+Check `features/*/status.json` for features whose `stage` isn't `done`. For an **in-repo** KB, feature records live on their branches: also list local and remote `kbee/*` branches and read each one's `features/<slug>/status.json` with `git show` (see `references/kb-layout.md`). A `shipped` record that's on the default branch is done (it merged). Otherwise check the PR state (`gh pr view <url> --json state`).
 
 - If the user names one, or there's exactly one that matches what they asked, **resume** it from its `stage`: `spec` without `approved.spec` goes to the spec approval pause, `spec` with approval goes to Plan, `plan` without `approved.plan` goes to the plan approval pause, and so on.
 - Otherwise start a new feature at Spec.
@@ -76,4 +76,4 @@ Run **kbee-ship**. It asks once before pushing and opening PRs.
   - any changes made to the plan during the build
   - which KB changes are pending until merge, or, for an in-repo KB, which KB changes are in the PR
 - **Separate KB:** tell them that after the PRs merge, running **kbee-sync** folds the changes into the KB. Mark the feature `done` at that point, not before.
-- **In-repo KB:** the docs merge with the code. The feature stays `shipped` and counts as done once its PR merges.
+- **In-repo KB:** the docs merge with the code. The feature stays `shipped` and counts as done once its record is on the default branch.

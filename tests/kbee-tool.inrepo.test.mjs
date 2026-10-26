@@ -159,3 +159,44 @@ test('the legacy KB example is found as a foreign KB in the monorepo', async () 
   assert.equal(findKb(root), null);
   assert.deepEqual(findForeignKbs(root), [path.join(root, 'kb')]);
 });
+
+test('a Markdown link whose text is a URL with a port is not a citation', async () => {
+  assert.deepEqual(parseCitations('[http://localhost:3000](http://localhost:3000) and [a:/x:1]'), []);
+  const { kbDir } = await makeWorkspace();
+  fs.appendFileSync(path.join(kbDir, 'contracts/orders-api.md'), '\nRun it at [http://localhost:3000](http://localhost:3000).\n');
+  assert.deepEqual(validateKb(kbDir).errors, []);
+});
+
+test('a KB adopted in a kbee/ subfolder or docs/kb is found, and not reported as foreign', async () => {
+  const { root, kbDir } = await makeMonorepo();
+  fs.mkdirSync(path.join(root, 'docs'));
+  fs.renameSync(kbDir, path.join(root, 'docs/kb'));
+  assert.equal(findKb(path.join(root, 'apps/api')), path.join(root, 'docs/kb'));
+  const team = path.join(root, 'kb');
+  fs.mkdirSync(path.join(team, 'contracts'), { recursive: true });
+  fs.writeFileSync(path.join(team, 'README.md'), '# Team KB\n');
+  fs.writeFileSync(path.join(team, 'contracts/orders.md'), '# Orders\n');
+  fs.renameSync(path.join(root, 'docs/kb'), path.join(team, 'kbee'));
+  assert.equal(findKb(root), path.join(team, 'kbee'));
+  assert.deepEqual(findForeignKbs(root), []);
+});
+
+test('in-repo team doc is flagged when a file it mentions is deleted', async () => {
+  const { root, kbDir } = await makeMonorepo();
+  fs.mkdirSync(path.join(kbDir, 'use-cases'));
+  fs.writeFileSync(path.join(kbDir, 'use-cases/orders.md'), 'Pages: `apps/web/src/OrderPage.tsx`.\n');
+  editManifest(kbDir, (m) => (m.teamDocs = ['use-cases/orders.md']));
+  commitAll(root, 'team doc');
+  fs.rmSync(path.join(root, 'apps/web/src/OrderPage.tsx'));
+  commitAll(root, 'delete page');
+  assert.ok(byName(staleness(kbDir))['shop-web'].affectedKbFiles.includes('use-cases/orders.md'));
+});
+
+test('in-repo staleness works through a symlinked path', async () => {
+  const { root, kbDir } = await makeMonorepo();
+  const link = path.join(tempDir('kbee-link-'), 'shop');
+  fs.symlinkSync(root, link);
+  fs.appendFileSync(path.join(root, 'apps/api/src/orders.ts'), 'export const later = 1;\n');
+  commitAll(root, 'change api');
+  assert.equal(byName(staleness(path.join(link, 'kb')))['shop-api'].status, 'stale');
+});

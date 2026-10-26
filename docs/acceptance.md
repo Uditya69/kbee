@@ -47,7 +47,7 @@ cp -R examples/fixtures/shop-legacy-kb "$MONO/kb"
 git -C "$MONO" init -q -b main && git -C "$MONO" add -A && git -C "$MONO" commit -qm initial
 ```
 
-Open the agent in `$MONO`. For 10d, build a second copy without the `kb` line.
+Open the agent in `$MONO`. For 10d, build a second copy without the `kb` line. The legacy KB has two planted errors, so don't tell the agent about them: it claims orders are stored in Postgres, and it points at `apps/api/src/db/orders.sql`, which doesn't exist.
 
 | # | Do | Pass when |
 |---|----|-----------|

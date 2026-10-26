@@ -29,7 +29,7 @@ This skill has two modes:
 When `manifest.json` has `"location": "in-repo"`, the KB shares the code's git history, and docs merge with the code:
 
 - **Feature mode** writes the KB fact changes **on the feature branch** `kbee/<slug>`, next to the code, instead of `pending.md`. Draft each change, cite it without a commit (`[repo:path:line]`), run the verify pass and `validate` on the branch, and commit it there (`kb: <slug> facts`). The user approves these in **kbee-ship**'s pre-push summary, so don't add a prompt here.
-- There's **no merge mode** for in-repo KBs: the facts are already in the PR. After merge, the feature counts as done once its branch has merged and `status.json.stage` is `shipped`.
+- There's **no merge mode** for in-repo KBs: the facts are already in the PR. A `shipped` feature counts as done once its records are on the default branch (that proves the merge, even after a squash merge).
 - The **gap check** works the same: `stale` reads git history instead of `syncedSha`, and lists the KB files and team docs whose cited or mentioned files changed after their last commit. Re-verify those, propose fixes, write on a yes, and commit on the current branch. There's no `set-synced`.
 
 ## Team docs
@@ -68,7 +68,7 @@ This is bookkeeping, so write it **without asking**, and mention it in your summ
 Brings the KB up to the current rules. It only adds and corrects, and never rebuilds from scratch.
 
 1. Run `node <skill-dir>/scripts/kbee-tool.mjs rules <kb>`. Its `changes` are the entries of [references/rules-changelog.md](references/rules-changelog.md) newer than the KB's version. Each one lists the passes to apply.
-2. Make sure the KB is fresh first. If repos are stale, run merge mode before upgrading, so new facts aren't mixed with outdated ones.
+2. Make sure the KB is fresh first. If repos are stale, run merge mode before upgrading (for an in-repo KB, re-verify the stale files instead), so new facts aren't mixed with outdated ones.
 3. Tell the user which passes you'll run, and roughly how big the job is.
 4. Apply each pass, in version order, to the existing KB, at each repo's current default-branch SHA. Scan only what each pass needs. Keep existing facts unless a pass shows they're wrong.
 5. Draft, verify (the verify pass, then `validate`), then **show the changes grouped by pass** before writing. The same approval rules apply: facts need a yes, and `gaps.md` and `features/` entries are bookkeeping.
@@ -77,6 +77,6 @@ Brings the KB up to the current rules. It only adds and corrects, and never rebu
 
 ## Rules
 
-- Never write facts based on unmerged code.
+- Never write facts based on unmerged code into a separate KB. (In-repo KBs write them on the feature branch, where they merge with that code.)
 - Never move `syncedSha` forward past code you haven't re-verified.
 - If a cited file was deleted or renamed, find where the behavior lives now and re-cite it. If it's gone, propose removing the fact.

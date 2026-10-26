@@ -34,7 +34,7 @@ Never "fix" a citation by guessing another line. Reread the code instead.
 
 ## 3. Track freshness
 
-`manifest.json` records the commit each repo was last synced at (`syncedSha`). Before trusting the KB, check staleness (`stale`, below). Treat KB files that cite changed files of a stale repo as unconfirmed until re-verified.
+`manifest.json` records the commit each repo was last synced at (`syncedSha`). In an in-repo KB there's no `syncedSha`: a KB file is stale when a file it cites changed in a commit after the KB file's own last commit. Before trusting the KB, check staleness (`stale`, below). Treat KB files that cite changed files of a stale repo as unconfirmed until re-verified.
 
 ## 4. Uncertain means ask
 

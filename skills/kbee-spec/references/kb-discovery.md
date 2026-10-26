@@ -4,7 +4,7 @@
 Search in this order, and stop at the first folder whose `manifest.json` is valid (it has `"kbeeVersion": 1` and a `repos` list):
 
 1. The current folder and each of its parent folders.
-2. **`<git root>/kb`**: an in-repo KB in a folder named `kb` at the root of the current git repo, even when you're deep inside a package.
+2. **`<git root>/kb`**: an in-repo KB in a folder named `kb` at the root of the current git repo, even when you're deep inside a package. Also the other places **kbee-audit** adopts a team's KB (`docs/kb`, `knowledge`, `wiki`, `docs/architecture` and similar), and a `kbee/` subfolder of any of them.
 3. A **pointer block** in `AGENTS.md` or `CLAUDE.md` at the root of the current git repo. Its path is relative to that repo root:
 
    ```

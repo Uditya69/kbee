@@ -105,7 +105,7 @@ A type name with a citation is not a shape.
 
 `source` records where the requirements came from: `type` is `jira`, `github`, `figma`, or `text`. It's empty for plain text.
 
-`stage` is one of `spec`, `plan`, `build`, `review`, `ship`, `shipped`, or `done`. In-repo features stop at `shipped`: the records merge with the code, and a `shipped` feature whose branch has merged counts as done.
+`stage` is one of `spec`, `plan`, `build`, `review`, `ship`, `shipped`, or `done`. In-repo features stop at `shipped`: the records merge with the code. A `shipped` record on the default branch counts as done, because its being there proves the merge, even after a squash merge.
 
 `branches` and `prs` are keyed by manifest entry. Monorepo packages share **one branch per git repo** and one PR, so entries that live in the same git repo (see `kbee-tool.mjs roots`) have the same branch and PR URL.
 
@@ -116,4 +116,5 @@ When `"location": "in-repo"`, the KB and the code share one git history, so:
 - **Citations name no commit:** `[repo:path:line]` or `[repo:path:start-end]`, with `path` relative to the git root. It means "the code in this same commit". `syncedSha` stays `null` and `set-synced` isn't used.
 - **Freshness comes from history:** a KB file is stale when a file it cites changed in a commit after the KB file's own last commit.
 - **Feature work lives on the feature branch.** `kbee-spec` creates `kbee/<slug>` and commits `features/<slug>/` there. KB fact changes are written on that branch too, verified, and merge in the same PR as the code. There is no `pending.md` and nothing to do after merge.
-- To find in-flight features, list local and remote `kbee/*` branches and read `kb/features/<slug>/status.json` on each (`git show kbee/<slug>:kb/features/<slug>/status.json`).
+- To find in-flight features, list local and remote `kbee/*` branches and read `features/<slug>/status.json` on each: `git show kbee/<slug>:<kb>/features/<slug>/status.json`, where `<kb>` is the KB folder's path from the git root (usually `kb`).
+- **Init, audit and sync read and commit on the default branch** (or a `kbee/kb-*` branch cut from it in `"pr"` mode), so commit-less citations match the code they're committed with. On another branch, switch first, and stop and ask if the tree is dirty.
