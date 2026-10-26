@@ -1,6 +1,6 @@
 ---
 name: kbee
-description: The one kbee command. "/kbee build <Jira ticket | Figma link | plain-text requirements>" takes a feature from ticket or idea to reviewed, cross-linked PRs across all repos; "/kbee init" sets up the knowledge base; "/kbee ask" queries it; "/kbee sync" keeps it current. Use whenever the user says kbee, gives a ticket ID like PROJ-123 to build, or asks to build, ship, or set up something with kbee.
+description: The one kbee command. "/kbee build <Jira ticket | Figma link | plain-text requirements>" takes a feature from ticket or idea to reviewed, cross-linked PRs across all repos; "/kbee init" sets up the knowledge base; "/kbee audit" adopts and fixes an existing one; "/kbee ask" queries it; "/kbee sync" keeps it current. Use whenever the user says kbee, gives a ticket ID like PROJ-123 to build, or asks to build, ship, or set up something with kbee.
 ---
 
 # kbee
@@ -11,12 +11,13 @@ This is the only command users need. Work out what they want, then follow the ma
 |---------------|-----|
 | `/kbee build <anything>` (also "build", "implement", "ship this", a bare ticket ID or link) | **kbee-feature**, passing their input as the feature source |
 | `/kbee init` ("set up", "connect my repos", "join our KB") | **kbee-init** |
+| `/kbee audit` ("check our KB", "use our existing docs", "is our KB any good") | **kbee-audit** |
 | `/kbee ask <question>` (any question about how the system works) | **kbee-kb**, Ask intent |
 | `/kbee add <repo>`, "document X", "the KB is wrong about Y" | **kbee-kb** |
 | `/kbee sync` ("update the KB", "upgrade the KB", "PRs merged") | **kbee-sync** |
-| `/kbee` alone, or "status" | Show the KB location, stale repos, unfinished features from `features/*/status.json`, and whether the rules are outdated. Then offer the next step |
+| `/kbee` alone, or "status" | Show the KB location, stale repos, unfinished features from `features/*/status.json` (for an in-repo KB, also from the `kbee/*` branches, see `references/kb-layout.md`), and whether the rules are outdated. Then offer the next step |
 
-If there's **no KB** yet and the user asked to build, say so in one line, run **kbee-init** first, then continue with the build. Don't make them start over.
+If there's **no KB** yet and the user asked to build, say so in one line, set one up first, then continue with the build. Don't make them start over. If `find` lists a **foreign** KB (a hand-written one without a kbee manifest), set it up with **kbee-audit**. Otherwise use **kbee-init**.
 
 ## What `/kbee build` accepts
 

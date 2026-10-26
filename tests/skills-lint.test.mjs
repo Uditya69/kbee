@@ -42,9 +42,9 @@ for (const name of skillNames()) {
   });
 }
 
-const EXPECTED_SKILLS = ['kbee', 'kbee-feature', 'kbee-implement', 'kbee-init', 'kbee-kb', 'kbee-plan', 'kbee-review', 'kbee-ship', 'kbee-spec', 'kbee-sync'];
+const EXPECTED_SKILLS = ['kbee', 'kbee-audit', 'kbee-feature', 'kbee-implement', 'kbee-init', 'kbee-kb', 'kbee-plan', 'kbee-review', 'kbee-ship', 'kbee-spec', 'kbee-sync'];
 
-test('exactly the ten kbee skills ship', () => {
+test('exactly the eleven kbee skills ship', () => {
   assert.deepEqual(skillNames(), EXPECTED_SKILLS);
 });
 

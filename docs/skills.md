@@ -20,6 +20,7 @@ The one command.
 |----------|---------|
 | `/kbee build PROJ-123`, `/kbee build "<requirements>"`, `/kbee build <figma link>` | **kbee-feature**, setting up the KB first if there isn't one |
 | `/kbee init` | **kbee-init** |
+| `/kbee audit` | **kbee-audit** |
 | `/kbee ask "<question>"` | **kbee-kb** (Ask) |
 | `/kbee add <repo>`, "document X" | **kbee-kb** |
 | `/kbee sync` | **kbee-sync** |
@@ -37,6 +38,17 @@ Sets up a knowledge base, or joins an existing one.
 - **Joining an existing KB:** it clones or finds the listed repos, records your local paths in `.kbee.local.json`, and reports what's stale. It doesn't rebuild anything.
 
 **Example prompts:** "set up kbee for these repos: …", "join our KB at git@github.com:acme/shop-kb.git".
+
+## kbee-audit
+
+Adopts a knowledge base you already have, whatever its format, and fixes it so kbee can use it.
+
+- **Finds:** a kbee KB, a hand-written one (for example a `kb/` folder at the root of a monorepo, or a separate docs repo), or knowledge scattered across READMEs, `CLAUDE.md` and `AGENTS.md`. If there's only scattered knowledge, it hands over to **kbee-init** with those docs as sources.
+- **Checks** it against the code: what's covered, what's missing, which claims are wrong (each one verified), and what kbee needs that isn't there.
+- **Asks once:** after one report, whether to **rewrite** your KB into kbee's layout, or **keep** your files and add kbee's files alongside them. Keeping is the safe choice: your files stay exactly as they are, and kbee keeps them up to date from then on, with your yes for each change.
+- **For a kbee KB**, it's a health check: stale repos go through **kbee-sync**, outdated rules through its upgrade mode.
+
+**Example prompts:** "/kbee audit", "check our kb folder and make it work with kbee", "is our knowledge base still right?".
 
 ## kbee-feature
 
